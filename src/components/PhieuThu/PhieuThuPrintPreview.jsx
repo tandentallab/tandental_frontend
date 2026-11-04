@@ -1,7 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { api } from "../../config/api";
 import { numberToWords } from "../../utils/numberToWords";
+
+// Ưu tiên userAgentData.mobile, fallback regex UA (iPad đời mới báo UA desktop → coi là máy tính)
+const isMobileDevice = () => {
+  if (typeof navigator === "undefined") return false;
+  if (typeof navigator.userAgentData?.mobile === "boolean") return navigator.userAgentData.mobile;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+};
+
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    if (!document.execCommand("copy")) throw new Error("execCommand copy thất bại");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+};
 
 const PhieuThuPrintPreview = () => {
   const navigate = useNavigate();
@@ -9,6 +36,31 @@ const PhieuThuPrintPreview = () => {
   const [loading, setLoading] = useState(true);
   const [phieuThu, setPhieuThu] = useState(null);
   const [congTy, setCongTy] = useState(null);
+  const [isMobile] = useState(isMobileDevice);
+
+  // Scale phiếu (rộng cố định 210mm) cho vừa chiều rộng màn hình
+  const containerRef = useRef(null);
+  const paperRef = useRef(null);
+  const [paperSize, setPaperSize] = useState({ scale: 1, width: 0, height: 0 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const paper = paperRef.current;
+    if (!container || !paper) return;
+
+    const update = () => {
+      const width = paper.offsetWidth;
+      const height = paper.offsetHeight;
+      const scale = width > 0 ? Math.min(1, container.clientWidth / width) : 1;
+      setPaperSize({ scale, width, height });
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    ro.observe(paper);
+    return () => ro.disconnect();
+  }, [loading, phieuThu]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,6 +130,25 @@ const PhieuThuPrintPreview = () => {
   const printDate = phieuThu.ngayThu || phieuThu.ngayTao || new Date();
   const soTienText = numberToWords(phieuThu.soTienThu);
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (isMobile && navigator.share) {
+      try {
+        await navigator.share({ title: `Phiếu thu ${maPhieuThu}`, url });
+      } catch (err) {
+        if (err?.name !== "AbortError") toast.error("Không thể chia sẻ liên kết");
+      }
+      return;
+    }
+    try {
+      await copyToClipboard(url);
+      toast.success("Đã sao chép liên kết");
+    } catch (err) {
+      console.error("Lỗi sao chép:", err);
+      toast.error("Không thể sao chép liên kết");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-200">
       <div className="h-10 bg-[#00a8ff] flex justify-between items-center px-4">
@@ -91,7 +162,12 @@ const PhieuThuPrintPreview = () => {
       </div>
 
       <div className="flex flex-col items-center py-6 px-4">
-        <div className="print-area bg-white shadow-lg border border-gray-300" style={{ width: "210mm", fontFamily: "Cambria", padding: "10mm", display: "flex", flexDirection: "column" }}>
+        <div ref={containerRef} className="w-full flex justify-center">
+        <div
+          className="print-scale-wrapper"
+          style={paperSize.width ? { width: paperSize.width * paperSize.scale, height: paperSize.height * paperSize.scale } : undefined}
+        >
+        <div ref={paperRef} className="print-area bg-white shadow-lg border border-gray-300" style={{ width: "210mm", fontFamily: "Cambria", padding: "10mm", display: "flex", flexDirection: "column", transform: `scale(${paperSize.scale})`, transformOrigin: "top left" }}>
           {/* Header */}
           <div style={{ marginBottom: "6mm" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "3mm" }}>
@@ -176,14 +252,24 @@ const PhieuThuPrintPreview = () => {
             ))}
           </div>
         </div>
+        </div>
+        </div>
 
-        {/* Print Button */}
-        <button
-          onClick={() => window.print()}
-          className="mt-4 px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          In phiếu thu
-        </button>
+        {/* Print / Share Buttons */}
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <button
+            onClick={() => window.print()}
+            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            In phiếu thu
+          </button>
+          <button
+            onClick={handleShare}
+            className="px-6 py-2 bg-white text-blue-600 border border-blue-500 rounded hover:bg-blue-50"
+          >
+            {isMobile ? "Chia sẻ" : "Sao chép liên kết"}
+          </button>
+        </div>
       </div>
 
       <style>{`
@@ -208,6 +294,7 @@ const PhieuThuPrintPreview = () => {
             background: white !important;
             display: flex !important;
             flex-direction: column !important;
+            transform: none !important;
           }
         }
       `}</style>

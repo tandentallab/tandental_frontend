@@ -1287,7 +1287,7 @@ const KeHoachGiaoHangTable = () => {
         <div id="print-section" className="hidden print:block w-full">
           <style>{`
             @media print {
-              @page { size: A4 landscape; margin: 8mm; }
+              @page { size: A4 landscape; margin: 5mm; }
               html, body, #root, #root > div, main, .bg-gray-100, .max-w-full {
                 position: static !important; margin: 0 !important; padding: 0 !important;
                 width: 100% !important; max-width: 100% !important; min-width: 0 !important;
@@ -1301,27 +1301,32 @@ const KeHoachGiaoHangTable = () => {
                 padding: 0 !important; margin: 0 !important; box-shadow: none !important;
                 overflow: visible !important; display: block !important;
               }
-              #print-section h2 { margin: 0 0 16px 0 !important; padding: 0 !important; text-align: center !important; font-size: 20px !important; font-weight: bold !important; text-transform: uppercase !important; }
+              #print-section h2 { margin: 0 0 6px 0 !important; padding: 0 !important; text-align: center !important; font-size: 16px !important; font-weight: bold !important; text-transform: uppercase !important; }
+              #print-section h3 { margin: 10px 0 4px 0 !important; padding: 0 !important; font-size: 13px !important; font-weight: bold !important; }
               #print-section table { width: 100% !important; border-collapse: collapse !important; margin: 0 !important; padding: 0 !important; }
-              #print-section table td, #print-section table th { border: 1px solid black !important; padding: 8px 10px !important; font-size: 13px !important; line-height: 1.4 !important; vertical-align: middle !important; }
+              #print-section thead { display: table-header-group !important; }
+              #print-section tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+              #print-section table td, #print-section table th { border: 1px solid black !important; padding: 2px 4px !important; font-size: 12px !important; line-height: 1.25 !important; vertical-align: middle !important; }
               #print-section table th { background-color: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             }
           `}</style>
           <h2 className="text-xl font-bold text-center mb-4 uppercase">
             Kế Hoạch Giao Hàng
           </h2>
+          {(() => {
+            // Tách đơn có lý do hẹn lại xuống mục riêng (giống file Excel)
+            const allPrintOrders = printOrders ?? filteredOrders;
+            const donThuong = allPrintOrders.filter((o) => !(o.lyDoHenLai || "").trim());
+            const donHenLai = allPrintOrders.filter((o) => (o.lyDoHenLai || "").trim());
+            const baseHeaders = ["Nhận lúc", "Số", "Khách hàng", "Bệnh nhân", "Răng", "Hẹn giao", "Ghi chú"];
+
+            const renderTable = (orders, withLyDo) => {
+              const headers = withLyDo ? [...baseHeaders, "Lý do hẹn"] : baseHeaders;
+              return (
           <table className="w-full border-collapse border border-black">
             <thead>
               <tr>
-                {[
-                  "Nhận lúc",
-                  "Số",
-                  "Khách hàng",
-                  "Bệnh nhân",
-                  "Răng",
-                  "Hẹn giao",
-                  "Ghi chú",
-                ].map((h) => (
+                {headers.map((h) => (
                   <th
                     key={h}
                     className="border border-black px-2 py-1 text-center font-semibold"
@@ -1332,7 +1337,7 @@ const KeHoachGiaoHangTable = () => {
               </tr>
             </thead>
             <tbody>
-              {(printOrders ?? filteredOrders).flatMap((order) => {
+              {orders.flatMap((order) => {
                 const dssp = order.danhSachSanPham || [];
                 const products = dssp.length > 0 ? dssp : [null];
                 const maDon =
@@ -1367,13 +1372,18 @@ const KeHoachGiaoHangTable = () => {
                     <td className="border border-black px-2 py-1">
                       {order.ghiChuChung}
                     </td>
+                    {withLyDo && (
+                      <td className="border border-black px-2 py-1">
+                        {order.lyDoHenLai}
+                      </td>
+                    )}
                   </tr>
                 ));
               })}
-              {(printOrders ?? filteredOrders).length === 0 && (
+              {orders.length === 0 && (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan={headers.length}
                     className="border border-black text-center py-4"
                   >
                     Không có dữ liệu
@@ -1382,6 +1392,22 @@ const KeHoachGiaoHangTable = () => {
               )}
             </tbody>
           </table>
+              );
+            };
+
+            return (
+              <>
+                {/* Bảng đầu ẩn nếu rỗng mà có đơn hẹn lại */}
+                {(donThuong.length > 0 || donHenLai.length === 0) && renderTable(donThuong, false)}
+                {donHenLai.length > 0 && (
+                  <>
+                    <h3 className="font-bold mt-3 mb-1">Đơn hẹn lại</h3>
+                    {renderTable(donHenLai, true)}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 

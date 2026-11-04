@@ -270,6 +270,10 @@ const DonHangForm = () => {
   const [yeuCauHoanThanhAnchor, setYeuCauHoanThanhAnchor] = useState(null);
   const [henGiaoAnchor, setHenGiaoAnchor] = useState(null);
 
+  // Hẹn giao gốc khi tải đơn – dùng để phát hiện dời ngày hẹn về sau
+  const originalHenGiaoRef = useRef("");
+  const [lyDoHenLaiModal, setLyDoHenLaiModal] = useState({ open: false, value: "" });
+
   const [formData, setFormData] = useState({
     nhaKhoa: "",
     bacSi: "",
@@ -446,6 +450,7 @@ const DonHangForm = () => {
             );
           }
 
+          originalHenGiaoRef.current = dh.henGiao ? toLocalDT(dh.henGiao) : "";
           setFormData({
             ...dh,
             nhaKhoa: dh.nhaKhoa?._id || dh.nhaKhoa,
@@ -501,7 +506,7 @@ const DonHangForm = () => {
     const handleKeyDown = (e) => {
       if (e.key === "F3") {
         e.preventDefault();
-        if (!isViewOnly) handleSaveRef.current();
+        if (!isViewOnly && !lyDoHenLaiOpenRef.current) handleSaveRef.current();
       } else if (e.key === "F4" && isEditMode) {
         e.preventDefault();
         navigate(`/donhang/${id}/print`);
@@ -747,10 +752,34 @@ const DonHangForm = () => {
       return;
     }
 
+    // Sửa đơn: dời ngày Hẹn giao về sau (so theo phần ngày) → bắt buộc nhập lý do
+    const oldHenGiaoDate = (originalHenGiaoRef.current || "").split("T")[0];
+    const newHenGiaoDate = (formData.henGiao || "").split("T")[0];
+    if (isEditMode && oldHenGiaoDate && newHenGiaoDate > oldHenGiaoDate) {
+      setLyDoHenLaiModal({ open: true, value: formData.lyDoHenLai || "" });
+      return;
+    }
+
+    submitDonHang();
+  };
+
+  const handleConfirmLyDoHenLai = () => {
+    const lyDo = lyDoHenLaiModal.value.trim();
+    if (!lyDo) {
+      toast.error("Vui lòng nhập lý do hẹn lại");
+      return;
+    }
+    setLyDoHenLaiModal({ open: false, value: "" });
+    submitDonHang({ lyDoHenLai: lyDo });
+  };
+
+  const submitDonHang = (extraData = {}) => {
+    if (isSubmitting) return;
     // Convert date strings to ISO format for backend; strip read-only nhật ký from payload
     const { nhatKyChinhSua: _nk, ...formBase } = formData;
     const dataToSend = {
       ...formBase,
+      ...extraData,
       // Strip empty ObjectId fields to avoid Mongoose cast errors
       bacSi: formData.bacSi || undefined,
       ngayNhan: formData.ngayNhan ? new Date(formData.ngayNhan).toISOString() : null,
@@ -792,6 +821,8 @@ const DonHangForm = () => {
 
   const handleSaveRef = useRef(null);
   handleSaveRef.current = handleSave;
+  const lyDoHenLaiOpenRef = useRef(false);
+  lyDoHenLaiOpenRef.current = lyDoHenLaiModal.open;
 
   const getLoaiTinh = (sanPhamId) => {
     if (!sanPhamId) return null;
@@ -1839,6 +1870,41 @@ const DonHangForm = () => {
         <QuickAddField label="Quận / Huyện" value={quickAddBenhNhan.form.quanHuyen} placeholder="Bình Thạnh..." onChange={v => setQuickAddBenhNhan(s => ({ ...s, form: { ...s.form, quanHuyen: v } }))} />
         {!formData.nhaKhoa && <p className="text-base text-orange-500">⚠ Vui lòng chọn nha khoa trước</p>}
       </QuickAddModal>
+
+      {/* Lý do hẹn lại khi dời Hẹn giao */}
+      {lyDoHenLaiModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setLyDoHenLaiModal({ open: false, value: "" })} />
+          <div className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
+            <h3 className="font-bold text-base mb-2 text-blue-700">Lý do hẹn lại</h3>
+            <p className="text-base text-gray-500 mb-3">
+              Hẹn giao được dời từ {dayjs(originalHenGiaoRef.current.split("T")[0]).format("DD/MM/YYYY")} sang{" "}
+              {dayjs(formData.henGiao.split("T")[0]).format("DD/MM/YYYY")}.
+            </p>
+            <textarea
+              autoFocus
+              value={lyDoHenLaiModal.value}
+              onChange={e => setLyDoHenLaiModal(s => ({ ...s, value: e.target.value }))}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleConfirmLyDoHenLai();
+                }
+              }}
+              rows={3}
+              className="w-full border border-gray-200 rounded outline-none py-1 px-2 text-base resize-none focus:ring-1 focus:ring-blue-400"
+              placeholder="Nhập lý do hẹn lại..."
+            />
+            <div className="flex gap-2 mt-5 justify-end">
+              <button onClick={() => setLyDoHenLaiModal({ open: false, value: "" })} className="px-4 py-1.5 text-base rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Hủy</button>
+              <button onClick={handleConfirmLyDoHenLai} disabled={isSubmitting} className="px-4 py-1.5 text-base rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { api, API_URL } from "../../config/api";
 import debounce from "lodash/debounce";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import { hasRouteAccess } from "../../config/permissions";
 import { toast } from "sonner";
 import GhiChuAddModal from "../GhiChu/GhiChuAddModal";
@@ -220,6 +221,31 @@ const Header = ({ onToggleSidebar }) => {
     }
   }, [isAuthenticated, user]);
 
+  // ===== NHA KHOA LÂU CHƯA GỬI ĐƠN =====
+  const coQuyenGhiChu = isAuthenticated && hasRouteAccess(user, "/ghi-chu");
+  const coQuyenNhaKhoa = isAuthenticated && hasRouteAccess(user, "/nha-khoa");
+  const [nhaKhoaChuaGuiDon, setNhaKhoaChuaGuiDon] = useState([]);
+  const [nguongNgayChuaGuiDon, setNguongNgayChuaGuiDon] = useState(10);
+  const [openNhaKhoaPopover, setOpenNhaKhoaPopover] = useState(false);
+
+  const fetchNhaKhoaChuaGuiDon = async () => {
+    try {
+      const res = await api.get("/nhakhoa/lau-chua-gui-don");
+      if (res.data?.success) {
+        setNhaKhoaChuaGuiDon(res.data.data || []);
+        if (res.data.nguong) setNguongNgayChuaGuiDon(res.data.nguong);
+      }
+    } catch (error) {
+      console.error("Lỗi lấy danh sách nha khoa lâu chưa gửi đơn:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (coQuyenNhaKhoa) {
+      fetchNhaKhoaChuaGuiDon();
+    }
+  }, [coQuyenNhaKhoa]);
+
   const activeTodoList = React.useMemo(() => {
     return todoList.filter((todo) => todo.trangThai === "Chưa hoàn thành");
   }, [todoList]);
@@ -241,6 +267,13 @@ const Header = ({ onToggleSidebar }) => {
       fetchTodos();
     }
     setOpenTodoPopover(!openTodoPopover);
+  };
+
+  const handleToggleNhaKhoaPopover = () => {
+    if (!openNhaKhoaPopover) {
+      fetchNhaKhoaChuaGuiDon();
+    }
+    setOpenNhaKhoaPopover(!openNhaKhoaPopover);
   };
 
   const handleToggleCheckTodo = async (id) => {
@@ -515,7 +548,7 @@ const Header = ({ onToggleSidebar }) => {
 
             {isAuthenticated ? (
               <>
-                {hasRouteAccess(user, "/ghi-chu") && (
+                {coQuyenGhiChu && (
                   <div className="relative">
                     <button
                       onClick={handleToggleTodoPopover}
@@ -636,6 +669,90 @@ const Header = ({ onToggleSidebar }) => {
                             style={{ textTransform: "none" }}
                           >
                             Thêm
+                          </Button>
+                        </div>
+                      </Paper>
+                    )}
+                  </div>
+                )}
+                {coQuyenNhaKhoa && (
+                  <div className="relative">
+                    <button
+                      onClick={handleToggleNhaKhoaPopover}
+                      title={`Nha khoa ≥ ${nguongNgayChuaGuiDon} ngày chưa gửi đơn`}
+                      className="flex items-center justify-center w-10 h-10 bg-white text-red-500 rounded-lg border border-gray-200 hover:bg-gray-50 transition shadow-sm relative shrink-0"
+                    >
+                      <LocalHospitalIcon className="!w-6 !h-6" />
+                      {nhaKhoaChuaGuiDon.length > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full min-w-[20px] h-5 px-1 text-[10px] flex items-center justify-center font-bold shadow-sm">
+                          {nhaKhoaChuaGuiDon.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {openNhaKhoaPopover && (
+                      <div
+                        className="fixed inset-0 z-[1190]"
+                        onClick={() => setOpenNhaKhoaPopover(false)}
+                      />
+                    )}
+
+                    {openNhaKhoaPopover && (
+                      <Paper
+                        className="fixed sm:absolute top-[60px] sm:top-[45px] left-4 sm:left-auto right-4 sm:right-0 w-[calc(100vw-32px)] sm:w-[440px] max-w-md sm:max-w-none bg-white rounded-2xl shadow-2xl border border-gray-100 z-[1200] flex flex-col overflow-hidden text-gray-800"
+                        style={{ maxHeight: "650px" }}
+                      >
+                        <div className="bg-red-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+                          <span className="font-bold text-red-800 text-base">
+                            Nha khoa ≥ {nguongNgayChuaGuiDon} ngày chưa gửi đơn ({nhaKhoaChuaGuiDon.length})
+                          </span>
+                        </div>
+                        <div
+                          className="flex-grow overflow-y-auto divide-y divide-gray-100 p-2"
+                          style={{ maxHeight: "450px" }}
+                        >
+                          {nhaKhoaChuaGuiDon.length > 0 ? (
+                            nhaKhoaChuaGuiDon.map((nk) => (
+                              <div
+                                key={nk._id}
+                                onClick={() => {
+                                  setOpenNhaKhoaPopover(false);
+                                  navigate("/nha-khoa");
+                                }}
+                                className="p-2 flex items-center justify-between gap-2.5 hover:bg-gray-50 transition rounded-lg cursor-pointer"
+                              >
+                                <div className="flex-1 min-w-0 text-left">
+                                  <p className="text-gray-800 font-semibold text-base truncate">
+                                    {nk.hoVaTen || nk.tenGiaoDich || "—"}
+                                  </p>
+                                  <p className="text-sm text-gray-400">
+                                    Đơn cuối: {new Date(nk.ngayDonCuoi).toLocaleDateString("vi-VN")}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 min-w-[32px] h-8 px-1 rounded-full border-2 border-red-500 bg-red-50 text-red-500 text-xs font-bold flex items-center justify-center">
+                                  {nk.soNgay}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-6 text-center text-gray-400 italic text-base">
+                              Không có nha khoa nào từ {nguongNgayChuaGuiDon} ngày trở lên chưa gửi đơn
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-2.5 bg-gray-50 border-t border-gray-100 flex justify-end shrink-0">
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setOpenNhaKhoaPopover(false);
+                              navigate("/nha-khoa");
+                            }}
+                            variant="outlined"
+                            className="text-gray-600 border-gray-300 hover:bg-gray-100 font-bold text-[11px] px-3 py-1 rounded-lg"
+                            style={{ textTransform: "none" }}
+                          >
+                            Mở trang Nha khoa
                           </Button>
                         </div>
                       </Paper>

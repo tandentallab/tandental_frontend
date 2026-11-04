@@ -68,23 +68,6 @@ import NhaKhoaDetailModal from "./NhaKhoaDetailModal";
 // =====================================================
 const ACCENT = "#0f766e"; // teal - màu chủ đạo
 const ACCENT_SOFT = "#e6f4f2";
-const AVATAR_PALETTE = [
-  "#0f766e",
-  "#0369a1",
-  "#7c3aed",
-  "#c2410c",
-  "#be123c",
-  "#4d7c0f",
-  "#0891b2",
-];
-
-const getAvatarColor = (name = "") => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++)
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-};
-
 const getInitials = (name = "?") =>
   name
     .split(" ")
@@ -93,6 +76,59 @@ const getInitials = (name = "?") =>
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+
+// Số ngày (theo lịch) tính từ ngày nhận đơn gần nhất đến hôm nay
+const getSoNgayTuDonCuoi = (ngayDonCuoi) => {
+  if (!ngayDonCuoi) return null;
+  const d = new Date(ngayDonCuoi);
+  if (Number.isNaN(d.getTime())) return null;
+  const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  return Math.max(0, Math.round((startOf(new Date()) - startOf(d)) / 86400000));
+};
+
+// Ngưỡng cảnh báo nha khoa lâu chưa gửi đơn (đồng bộ với backend)
+const NGUONG_NGAY_CHUA_GUI_DON = 10;
+
+// Circle hiển thị số ngày kể từ đơn hàng cuối: xanh < 10, đỏ ≥ 10
+function DonCuoiBadge({ ngayDonCuoi, size = 26 }) {
+  const soNgay = getSoNgayTuDonCuoi(ngayDonCuoi);
+  const color =
+    soNgay === null
+      ? "#94a3b8"
+      : soNgay < NGUONG_NGAY_CHUA_GUI_DON
+        ? "#16a34a"
+        : "#ef4444";
+  const title =
+    soNgay === null
+      ? "Chưa có đơn hàng"
+      : `Đơn cuối: ${new Date(ngayDonCuoi).toLocaleDateString("vi-VN")} (${soNgay} ngày trước)`;
+
+  return (
+    <Tooltip title={title} arrow>
+      <Box
+        component="span"
+        sx={{
+          flexShrink: 0,
+          width: size,
+          height: size,
+          minWidth: size,
+          borderRadius: "50%",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: `2px solid ${color}`,
+          color,
+          backgroundColor: `${color}14`,
+          fontSize: soNgay !== null && soNgay > 99 ? 9 : 11,
+          fontWeight: 700,
+          lineHeight: 1,
+        }}
+      >
+        {soNgay === null ? "—" : soNgay > 999 ? "999+" : soNgay}
+      </Box>
+    </Tooltip>
+  );
+}
 
 // =====================================================
 // FilterBar — thanh lọc tách riêng khỏi bảng chính.
@@ -132,14 +168,16 @@ const FilterBar = React.memo(function FilterBar({
 
   return (
     <Box
+
+      className="shadow"
       sx={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: { xs: "stretch", md: "center" },
         flexDirection: { xs: "column", md: "row" },
         gap: 2,
-        mb: 3,
-        p: 2,
+        mb: 1,
+        p: 1,
         borderRadius: "16px",
         backgroundColor: "#fff",
         border: "1px solid #eef0f2",
@@ -351,13 +389,18 @@ function NhaKhoaDetailDrawer({ open, onClose, nhaKhoa, onEdit, onDelete }) {
               {getInitials(ten)}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h6"
-                fontWeight={700}
-                sx={{ lineHeight: 1.25 }}
-              >
-                {ten}
-              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{ lineHeight: 1.25 }}
+                >
+                  {ten}
+                </Typography>
+                <Box sx={{ bgcolor: "#fff", borderRadius: "50%", display: "inline-flex" }}>
+                  <DonCuoiBadge ngayDonCuoi={nhaKhoa.ngayDonCuoi} size={28} />
+                </Box>
+              </Stack>
               <Typography variant="caption" sx={{ opacity: 0.8 }}>
                 ID: {nhaKhoa._id}
               </Typography>
@@ -705,14 +748,11 @@ export default function NhaKhoaTable() {
             </Typography>
           </Box>
 
-          <Table>
+          <Table size="small" sx={{ "& td:not([colspan]), & th": { py: 0.5 } }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f8fafc" }}>
                 <TableCell sx={{ fontWeight: 700, color: "#334155" }}>
                   Nha khoa
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#334155" }}>
-                  Địa chỉ
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#334155" }}>
                   Mô tả
@@ -722,9 +762,6 @@ export default function NhaKhoaTable() {
                   align="right"
                 >
                   Công nợ
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#334155" }}>
-                  Ngày tạo
                 </TableCell>
                 <TableCell
                   sx={{ fontWeight: 700, color: "#334155", width: 130 }}
@@ -738,7 +775,7 @@ export default function NhaKhoaTable() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} sx={{ color: ACCENT }} />
                   </TableCell>
                 </TableRow>
@@ -747,7 +784,7 @@ export default function NhaKhoaTable() {
               {!loading && filteredData.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={4}
                     align="center"
                     sx={{ py: 6, color: "text.secondary" }}
                   >
@@ -773,51 +810,18 @@ export default function NhaKhoaTable() {
                       <TableCell sx={{ maxWidth: 260 }}>
                         <Stack
                           direction="row"
-                          spacing={1.5}
+                          spacing={1}
                           alignItems="center"
+                          sx={{ minWidth: 0 }}
                         >
-                          <Avatar
-                            sx={{
-                              width: 38,
-                              height: 38,
-                              bgcolor: getAvatarColor(ten),
-                              fontWeight: 700,
-                              fontSize: 13,
-                            }}
+                          <Typography
+                            noWrap
+                            sx={{ fontWeight: 600, color: "#1e293b" }}
                           >
-                            {getInitials(ten)}
-                          </Avatar>
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography
-                              noWrap
-                              sx={{ fontWeight: 600, color: "#1e293b" }}
-                            >
-                              {ten}
-                            </Typography>
-                            <Typography
-                              noWrap
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              ID: {item._id?.slice(-6)}
-                            </Typography>
-                          </Box>
+                            {ten}
+                          </Typography>
+                          <DonCuoiBadge ngayDonCuoi={item.ngayDonCuoi} size={24} />
                         </Stack>
-                      </TableCell>
-
-                      <TableCell sx={{ maxWidth: 240 }}>
-                        <Typography noWrap variant="body2">
-                          {item.diaChiCuThe || "—"}
-                        </Typography>
-                        <Typography
-                          noWrap
-                          variant="caption"
-                          color="text.secondary"
-                        >
-                          {[item.quanHuyen, item.tinh]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </Typography>
                       </TableCell>
 
                       <TableCell sx={{ maxWidth: 260 }}>
@@ -846,24 +850,6 @@ export default function NhaKhoaTable() {
                             —
                           </Typography>
                         )}
-                      </TableCell>
-
-                      <TableCell>
-                        <Chip
-                          label={
-                            item.createdAt
-                              ? new Date(item.createdAt).toLocaleDateString(
-                                "vi-VN"
-                              )
-                              : "—"
-                          }
-                          size="small"
-                          sx={{
-                            backgroundColor: ACCENT_SOFT,
-                            color: ACCENT,
-                            fontWeight: 600,
-                          }}
-                        />
                       </TableCell>
 
                       <TableCell
@@ -946,24 +932,19 @@ export default function NhaKhoaTable() {
                       justifyContent: "space-between",
                       alignItems: "center",
                       px: 2,
-                      pt: 1.5,
-                      pb: 1,
+                      py: 0.5,
                       gap: 1.5,
                     }}
                   >
-                    <Avatar
+                    <Box
                       sx={{
-                        width: 36,
-                        height: 36,
-                        bgcolor: getAvatarColor(ten),
-                        fontWeight: 700,
-                        fontSize: 13,
+                        flex: 1,
+                        minWidth: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
                       }}
                     >
-                      {getInitials(ten)}
-                    </Avatar>
-
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography
                         fontWeight={700}
                         fontSize={14}
@@ -972,6 +953,7 @@ export default function NhaKhoaTable() {
                       >
                         {ten}
                       </Typography>
+                      <DonCuoiBadge ngayDonCuoi={item.ngayDonCuoi} size={24} />
                     </Box>
 
                     <IconButton
@@ -993,9 +975,6 @@ export default function NhaKhoaTable() {
 
                   {/* ROWS */}
                   {[
-                    { label: "Địa chỉ", value: item.diaChiCuThe || "" },
-                    { label: "Quận/Huyện", value: item.quanHuyen || "" },
-                    { label: "Tỉnh", value: item.tinh || "" },
                     {
                       label: "Công nợ",
                       value:
@@ -1005,12 +984,6 @@ export default function NhaKhoaTable() {
                       valueColor:
                         (item.tongCongNo ?? 0) > 0 ? "#ef4444" : undefined,
                     },
-                    {
-                      label: "Ngày tạo",
-                      value: item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString("vi-VN")
-                        : "",
-                    },
                   ].map((row, idx) => (
                     <Box
                       key={idx}
@@ -1019,7 +992,7 @@ export default function NhaKhoaTable() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         px: 2,
-                        py: 0.9,
+                        py: 0.5,
                         borderBottom: "1px solid #f3f4f6",
                         "&:last-of-type": { borderBottom: "none" },
                       }}

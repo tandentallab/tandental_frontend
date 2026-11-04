@@ -1030,24 +1030,28 @@ export const exportKeHoachGiaoHangToExcel = async (filteredOrders, formatSingleS
   // Dòng trống 7
   worksheet.addRow([]);
 
-  // Thêm header
-  const headerRow = worksheet.addRow(['Nhận lúc', 'Số', 'Khách hàng', 'Bệnh nhân', 'Răng', 'Hẹn giao', 'Ghi chú']);
-  headerRow.eachCell((cell) => {
-    cell.font = { name: 'Arial', size: 12, bold: true };
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    applyBorder(cell, 'thin');
-  });
+  const baseHeaders = ['Nhận lúc', 'Số', 'Khách hàng', 'Bệnh nhân', 'Răng', 'Hẹn giao', 'Ghi chú'];
+  const henLaiHeaders = [...baseHeaders, 'Lý do hẹn'];
 
-  // Cấu hình chiều rộng cột
-  worksheet.columns = [
-    { width: 18 }, // Nhận lúc
-    { width: 15 }, // Số
-    { width: 25 }, // Khách hàng
-    { width: 20 }, // Bệnh nhân
-    { width: 40 }, // Răng
-    { width: 18 }, // Hẹn giao
-    { width: 30 }  // Ghi chú
-  ];
+  // Theo dõi độ dài chuỗi dài nhất mỗi cột (header tính riêng) để tự tính độ rộng
+  const maxDataLen = [];
+  const maxHeaderLen = [];
+  const trackLen = (arr, values) => {
+    values.forEach((v, i) => {
+      const len = String(v ?? '').length;
+      arr[i] = Math.max(arr[i] || 0, len);
+    });
+  };
+
+  const addHeaderRow = (headers) => {
+    const headerRow = worksheet.addRow(headers);
+    headerRow.eachCell((cell) => {
+      cell.font = { name: 'Arial', size: 12, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      applyBorder(cell, 'thin');
+    });
+    trackLen(maxHeaderLen, headers);
+  };
 
   // Thêm dữ liệu — tách 1 dòng/sản phẩm
   const formatDateCustom = (dateStr) => {
@@ -1058,35 +1062,63 @@ export const exportKeHoachGiaoHangToExcel = async (filteredOrders, formatSingleS
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${pad(d.getFullYear())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  filteredOrders.forEach((order) => {
-    const maDon = order.maDonHang || `TAN${order._id.substring(order._id.length - 8).toUpperCase()}`;
-    const nhanLuc = formatDateCustom(order.ngayNhan);
-    const henGiao = formatDateCustom(order.henGiao);
-    const dssp = order.danhSachSanPham || [];
-    const products = dssp.length > 0 ? dssp : [null];
+  const addOrderRows = (orders, withLyDo) => {
+    orders.forEach((order) => {
+      const maDon = order.maDonHang || `TAN${order._id.substring(order._id.length - 8).toUpperCase()}`;
+      const nhanLuc = formatDateCustom(order.ngayNhan);
+      const henGiao = formatDateCustom(order.henGiao);
+      const dssp = order.danhSachSanPham || [];
+      const products = dssp.length > 0 ? dssp : [null];
 
-    products.forEach((sp) => {
-      const row = worksheet.addRow([
-        nhanLuc,
-        maDon,
-        order.nhaKhoa?.hoVaTen || "",
-        order.benhNhan?.hoVaTen || "",
-        formatSingleSanPham(sp),
-        henGiao,
-        order.ghiChuChung || ""
-      ]);
+      products.forEach((sp) => {
+        const values = [
+          nhanLuc,
+          maDon,
+          order.nhaKhoa?.hoVaTen || "",
+          order.benhNhan?.hoVaTen || "",
+          formatSingleSanPham(sp),
+          henGiao,
+          order.ghiChuChung || "",
+          ...(withLyDo ? [order.lyDoHenLai || ""] : []),
+        ];
+        const row = worksheet.addRow(values);
+        trackLen(maxDataLen, values);
 
-      row.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Arial', size: 11 };
-        cell.alignment = {
-          horizontal: colNumber === 1 || colNumber === 2 || colNumber === 6 ? 'center' : 'left',
-          vertical: 'middle',
-          wrapText: true
-        };
-        applyBorder(cell, 'thin');
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Arial', size: 11 };
+          cell.alignment = {
+            horizontal: colNumber === 1 || colNumber === 2 || colNumber === 6 ? 'center' : 'left',
+            vertical: 'middle',
+          };
+          applyBorder(cell, 'thin');
+        });
       });
     });
-  });
+  };
+
+  // Đơn có lý do hẹn lại được tách xuống mục riêng bên dưới
+  const donThuong = filteredOrders.filter((o) => !(o.lyDoHenLai || '').trim());
+  const donHenLai = filteredOrders.filter((o) => (o.lyDoHenLai || '').trim());
+
+  addHeaderRow(baseHeaders);
+  addOrderRows(donThuong, false);
+
+  if (donHenLai.length > 0) {
+    worksheet.addRow([]);
+    const sectionRow = worksheet.addRow(['Đơn hẹn lại']);
+    worksheet.mergeCells(sectionRow.number, 1, sectionRow.number, henLaiHeaders.length);
+    sectionRow.getCell(1).font = { name: 'Arial', size: 13, bold: true };
+    sectionRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+
+    addHeaderRow(henLaiHeaders);
+    addOrderRows(donHenLai, true);
+  }
+
+  // Độ rộng cột theo chuỗi dài nhất: dữ liệu × 1.1, header × 1.15, cộng thêm 2
+  const colCount = Math.max(maxDataLen.length, maxHeaderLen.length);
+  worksheet.columns = Array.from({ length: colCount }, (_, i) => ({
+    width: Math.ceil(Math.max((maxDataLen[i] || 0) * 1.1, (maxHeaderLen[i] || 0) * 1.15) + 2),
+  }));
 
   // Xuất file
   const buffer = await workbook.xlsx.writeBuffer();
