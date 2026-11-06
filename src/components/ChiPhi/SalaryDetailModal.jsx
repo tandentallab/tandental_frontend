@@ -22,7 +22,9 @@ const SalaryDetailModal = ({ selectedLuong, filter, onClose }) => {
                                 <TableCell sx={THEAD_SX}>Tên nhân viên</TableCell>
                                 <TableCell sx={THEAD_SX}>Lương cơ bản</TableCell>
                                 <TableCell sx={THEAD_SX}>Ứng trước</TableCell>
+                                <TableCell sx={THEAD_SX}>Trừ khác</TableCell>
                                 <TableCell sx={THEAD_SX}>Thực nhận</TableCell>
+                                <TableCell sx={THEAD_SX}>Chi phí lương</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -33,12 +35,14 @@ const SalaryDetailModal = ({ selectedLuong, filter, onClose }) => {
                                         <TableCell data-label="Tên nhân viên" sx={{ fontWeight: 600, color: '#0c4a6e' }}>{item.nhanVien?.hoVaTen || 'Không xác định'}</TableCell>
                                         <TableCell data-label="Lương cơ bản" sx={{ color: '#0369a1' }}>{formatVND(Math.round((item.luongCanBan || 0) / 1000) * 1000)}</TableCell>
                                         <TableCell data-label="Ứng trước" sx={{ color: '#0369a1' }}>{formatVND(Math.round((item.ungTruoc || 0) / 1000) * 1000)}</TableCell>
+                                        <TableCell data-label="Trừ khác" sx={{ color: '#0369a1' }}>{formatVND(Math.round((item.truKhac || 0) / 1000) * 1000)}</TableCell>
                                         <TableCell data-label="Thực nhận" sx={{ fontWeight: 700, color: '#0369a1' }}>{formatVND(Math.round((item.thucNhan || 0) / 1000) * 1000)}</TableCell>
+                                        <TableCell data-label="Chi phí lương" sx={{ fontWeight: 700, color: '#0369a1' }}>{formatVND(Math.round((item.chiPhiLuong ?? ((item.thucNhan || 0) + (item.ungTruoc || 0))) / 1000) * 1000)}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow className="empty-row">
-                                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#7dd3fc' }}>Chưa có dữ liệu bảng lương chi tiết</TableCell>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#7dd3fc' }}>Chưa có dữ liệu bảng lương chi tiết</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
