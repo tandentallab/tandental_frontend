@@ -14,6 +14,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import DonHangChuaXuatModal from "../DonHangChuaXuat/DonHangChuaXuatModal";
+import { taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
 
 const fmtVND = (v) =>
   new Intl.NumberFormat("vi-VN").format(Math.round(v || 0));
@@ -61,6 +62,7 @@ const HoaDonDetail = () => {
   const [hoaDon, setHoaDon] = useState(null);
   const [phieuThuList, setPhieuThuList] = useState([]);
   const [isDirty, setIsDirty] = useState(false);
+  const [dangXuatPdf, setDangXuatPdf] = useState(false);
   const [ptOpen, setPtOpen] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -399,6 +401,23 @@ const HoaDonDetail = () => {
 
   const handlePrint = () => {
     navigate(`/hoa-don/${id}/print`);
+  };
+
+  const handleXuatPdf = async () => {
+    if (isDirty) {
+      toast.error("Vui lòng bấm Lưu trước khi xuất PDF");
+      return;
+    }
+    const tenFile = tenFileHoaDon(hoaDon.nhaKhoa?.hoVaTen, hoaDon.createdAt);
+    setDangXuatPdf(true);
+    try {
+      await taiPdfHoaDon(id, tenFile);
+      toast.success(`Đã xuất ${tenFile}`);
+    } catch (err) {
+      toast.error(`Xuất PDF thất bại: ${err?.message || err}`);
+    } finally {
+      setDangXuatPdf(false);
+    }
   };
 
   const handleDeleteClick = () => {
@@ -854,6 +873,14 @@ const HoaDonDetail = () => {
           )}
           <button onClick={handlePrint} className="hidden md:flex items-center gap-1.5 px-4 py-2 border border-gray-300 rounded-2xl text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors">
             <Printer className="w-4 h-4" /> In hóa đơn
+          </button>
+          <button
+            onClick={handleXuatPdf}
+            disabled={dangXuatPdf}
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2 border border-gray-300 rounded-2xl text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" />
+            <span className="hidden sm:inline">{dangXuatPdf ? "Đang xuất..." : "Xuất PDF"}</span>
           </button>
           <button
             onClick={() => exportHoaDonToExcel(hoaDon)}

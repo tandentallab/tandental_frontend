@@ -7,12 +7,8 @@ import {
   startOfDay, endOfDay, isWithinInterval,
 } from "date-fns";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchDonHangChuaHoaDon, createHoaDon,
-  fetchCountDonHangChuaXuat, fetchNgayXuatHoaDonGanNhatAll,
-} from "../../redux/slices/hoaDonSlice";
+import { fetchDonHangChuaHoaDon } from "../../redux/slices/hoaDonSlice";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { buildProductNameMap } from "../../utils/hoaDonUtils";
 import dayjs from "dayjs";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -104,7 +100,7 @@ const DEFAULT_WIDTHS = {
 };
 const COLS_ORDER = Object.keys(DEFAULT_WIDTHS);
 
-export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, setSelectedOrders }) {
+export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, setSelectedOrders, onTaoHoaDon }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -252,9 +248,10 @@ export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, s
 
   const totalCost = useMemo(() => displayedData.reduce((s, r) => s + r.tongCong, 0), [displayedData]);
   const selectedSet = useMemo(() => new Set(selectedOrders.map((o) => o._id)), [selectedOrders]);
-  const selectedRowsCount = useMemo(() => {
-    return displayedData.filter((row) => selectedSet.has(row.orderId)).length;
-  }, [displayedData, selectedSet]);
+  const soNhaKhoaDaChon = useMemo(
+    () => new Set(selectedOrders.map((o) => o.nhaKhoa?._id || o.nhaKhoa)).size,
+    [selectedOrders]
+  );
 
   const uniqueOrdersInDisplay = useMemo(() => {
     const seen = new Set(); const orders = [];
@@ -285,36 +282,22 @@ export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, s
   }, [setSelectedOrders]);
 
   const toggleAll = useCallback(() => {
+    // Chỉ chọn/bỏ chọn các đơn đang hiển thị, giữ nguyên lựa chọn của nha khoa khác.
     const allSelected = uniqueOrdersInDisplay.length > 0 && uniqueOrdersInDisplay.every((o) => selectedSet.has(o._id));
-    setSelectedOrders(allSelected ? [] : uniqueOrdersInDisplay);
+    const displayIds = new Set(uniqueOrdersInDisplay.map((o) => o._id));
+    setSelectedOrders((prev) => {
+      const conLai = prev.filter((o) => !displayIds.has(o._id));
+      return allSelected ? conLai : [...conLai, ...uniqueOrdersInDisplay];
+    });
   }, [uniqueOrdersInDisplay, selectedSet, setSelectedOrders]);
 
   const onNavigate = useCallback((path) => navigate(path), [navigate]);
 
-  const handleCreateHoaDon = async () => {
-    if (selectedOrders.length === 0) { toast.error("Vui lòng chọn ít nhất 1 đơn hàng"); return; }
-    try {
-      const result = await dispatch(createHoaDon({
-        nhaKhoaId: selectedClinic,
-        danhSachDonHangIds: selectedOrders.map((o) => o._id),
-        tuNgay: activeDateRange.start.toISOString(),
-        denNgay: activeDateRange.end.toISOString(), // 🔥 dùng đúng "Đến ngày" filter, không phải now()
-      })).unwrap();
-
-      const newHoaDonId = result?.data?._id || result?._id;
-
-      toast.success("Tạo hóa đơn thành công!");
-      setSelectedOrders([]);
-      dispatch(fetchCountDonHangChuaXuat());
-      dispatch(fetchNgayXuatHoaDonGanNhatAll());
-      dispatch(fetchDonHangChuaHoaDon(selectedClinic));
-
-      if (newHoaDonId) {
-        navigate(`/hoa-don/${newHoaDonId}/edit`);
-      }
-    } catch (err) {
-      toast.error(err?.message || "Tạo hóa đơn thất bại");
-    }
+  const handleCreateHoaDon = () => {
+    onTaoHoaDon({
+      tuNgay: activeDateRange.start.toISOString(),
+      denNgay: activeDateRange.end.toISOString(), // 🔥 dùng đúng "Đến ngày" filter, không phải now()
+    });
   };
 
   const allDisplaySelected = uniqueOrdersInDisplay.length > 0 && uniqueOrdersInDisplay.every((o) => selectedSet.has(o._id));
@@ -364,9 +347,14 @@ export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, s
           </div>
 
           {selectedOrders.length > 0 && (
-            <Typography variant="body2" sx={{ color: "#00a8df", fontWeight: 600, fontSize: "15px" }}>
-              {selectedRowsCount} được chọn
-            </Typography>
+            <div className="flex items-center gap-2">
+              <Typography variant="body2" sx={{ color: "#00a8df", fontWeight: 600, fontSize: "15px" }}>
+                {selectedOrders.length} đơn · {soNhaKhoaDaChon} nha khoa được chọn
+              </Typography>
+              <Button size="small" onClick={() => setSelectedOrders([])} sx={{ textTransform: "none", minWidth: 0 }}>
+                Bỏ chọn
+              </Button>
+            </div>
           )}
         </div>
 

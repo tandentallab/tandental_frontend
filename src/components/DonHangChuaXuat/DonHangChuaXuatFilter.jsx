@@ -7,6 +7,7 @@ import { useEffect } from "react";
 export default function DonHangChuaXuatFilter({
   selectedClinic,
   setSelectedClinic,
+  soDonDaChonTheoNhaKhoa = {},
 }) {
   const [searchText, setSearchText] = useState(() => sessionStorage.getItem("donHang_searchNhaKhoa") || "");
   const dispatch = useDispatch();
@@ -241,6 +242,15 @@ export default function DonHangChuaXuatFilter({
                       Hóa đơn cuối: {formatDate(info.ngayXuatHoaDonCuoi)}
                     </Typography>
                   </div>
+                  {soDonDaChonTheoNhaKhoa[nk._id] > 0 && (
+                    <span
+                      className="text-xs font-bold flex-shrink-0 mr-1.5 px-1.5 rounded-full text-white"
+                      style={{ backgroundColor: "#00a8df" }}
+                      title="Số đơn đã chọn"
+                    >
+                      ✓{soDonDaChonTheoNhaKhoa[nk._id]}
+                    </span>
+                  )}
                   {info.count > 0 && (
                     <span
                       className="text-base font-bold flex-shrink-0"

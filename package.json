@@ -23,6 +23,8 @@
     "dayjs": "^1.11.21",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
+    "html2canvas": "1.4.1",
+    "jspdf": "3.0.4",
     "lodash": "^4.18.1",
     "lucide-react": "^1.14.0",
     "qrcode.react": "^4.2.0",
