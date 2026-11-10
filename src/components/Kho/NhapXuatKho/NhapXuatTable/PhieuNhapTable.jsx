@@ -1,6 +1,12 @@
 import { useRef, useEffect } from "react";
 import { rowBase, borderBottom, imBg, formatNgay } from "./constants";
 
+// Thành tiền phiếu = tiền vật liệu + phí phát sinh (giống bản in phiếu),
+// tự tính ở FE để không phụ thuộc vào tongTien backend trả về
+const tinhTongTienPhieu = (row) =>
+    (row.danhSachVatLieu || []).reduce((sum, item) => sum + (Number(item.thanhTien) || 0), 0) +
+    (Number(row.phiPhatSinh) || 0);
+
 export default function PhieuNhapTable({ data, selectedId, onRowClick, hasMore, loadingMore, onLoadMore, onToggleVAT }) {
     const sentinelRef = useRef(null);
 
@@ -51,7 +57,7 @@ export default function PhieuNhapTable({ data, selectedId, onRowClick, hasMore, 
                                     <td className={`${rowBase} ${borderBottom}`}>{row.soPhieu}</td>
                                     <td className={`${rowBase} ${borderBottom}`}>{nccTen}</td>
                                     <td className={`${rowBase} ${borderBottom}`}>
-                                        {(row.tongTien || 0).toLocaleString("vi-VN")}
+                                        {tinhTongTienPhieu(row).toLocaleString("vi-VN")}
                                     </td>
                                     <td
                                         className={`${borderBottom} pl-3`}
@@ -121,7 +127,7 @@ export default function PhieuNhapTable({ data, selectedId, onRowClick, hasMore, 
 
                                     <span className="text-gray-400">Thành tiền</span>
                                     <span className="font-medium text-gray-800">
-                                        {(row.tongTien || 0).toLocaleString("vi-VN")} ₫
+                                        {tinhTongTienPhieu(row).toLocaleString("vi-VN")} ₫
                                     </span>
 
                                     <span className="text-gray-400">VAT</span>
