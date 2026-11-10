@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTenSanPhamDong } from "../../data/sanPhamConfig";
 
 const DEFAULT_COL_WIDTHS = [135, 135, 200, 80, 200, 80, 120, 100, 50, 120, 120, 135];
 
@@ -78,7 +79,7 @@ const DonHangTable = ({ data, selectedId, onRowClick }) => {
         return danhSachSanPham.map((sp) => {
             const prefix = loaiDonPrefix[sp?.loaiDon] || "";
             const soLuong = sp?.soLuong || 1;
-            const tenSanPham = sp?.sanPham?.tenSanPham || "";
+            const tenSanPham = getTenSanPhamDong(sp);
             return [prefix, " - ", soLuong, tenSanPham].filter(Boolean).join(" ");
         }).join(" | ");
     };
@@ -218,7 +219,7 @@ const DonHangTable = ({ data, selectedId, onRowClick }) => {
                                         <td className="px-3 truncate hidden md:table-cell">{dh?.benhNhan?.hoVaTen}</td>
                                         <td className="px-3 truncate hidden lg:table-cell">{sp ? (loaiDonPrefix[sp?.loaiDon] || "Mới") : ""}</td>
                                         <td className="px-3 py-2 hidden lg:table-cell">
-                                            <div className="truncate">{sp?.sanPham?.tenSanPham || ""}</div>
+                                            <div className="truncate">{getTenSanPhamDong(sp)}</div>
                                         </td>
                                         <td className="px-3 py-2 truncate hidden lg:table-cell">{sp?.mau || ""}</td>
                                         <td className="px-3 py-2 truncate hidden lg:table-cell text-center">{sp ? (sp?.soLuong || 1) : ""}</td>

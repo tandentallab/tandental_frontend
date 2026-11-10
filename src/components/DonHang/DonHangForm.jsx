@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { hasExplicitPermission, hasRouteAccess, ORDER_DELIVERY_TIME_PERMISSION } from "../../config/permissions";
 import GhiChuAddModal from "../GhiChu/GhiChuAddModal";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
+import { NHOM_MUA_GIUM } from "../../data/sanPhamConfig";
 
 // ===== QUICK ADD MODALS =====
 const QuickAddModal = ({ open, onClose, title, children, onSubmit, loading }) => {
@@ -300,6 +301,7 @@ const DonHangForm = () => {
         soLuong: 0,
         mau: "",
         ghiChu: "",
+        donGia: null,
         yeuCauThu: [],
       },
     ],
@@ -584,7 +586,8 @@ const DonHangForm = () => {
     if (field === "sanPham") {
       const oldLoaiTinh = getLoaiTinh(oldRow.sanPham);
       const newLoaiTinh = getLoaiTinh(value);
-      const sameLoaiTinh = Boolean(oldRow.sanPham) && oldLoaiTinh != null && oldLoaiTinh === newLoaiTinh;
+      const sameLoaiTinh = Boolean(oldRow.sanPham) && oldLoaiTinh != null && oldLoaiTinh === newLoaiTinh
+        && isMuaGium(oldRow.sanPham) === isMuaGium(value);
 
       if (!sameLoaiTinh) {
         newDsSp[index].viTri = [];
@@ -593,6 +596,7 @@ const DonHangForm = () => {
         newDsSp[index].mau = "";
         newDsSp[index].ghiChu = "";
         newDsSp[index].yeuCauThu = [];
+        newDsSp[index].donGia = null;
       }
       // else: cùng loaiTinh → giữ nguyên toàn bộ các trường khác
     }
@@ -640,6 +644,7 @@ const DonHangForm = () => {
       soLuong: sp.soLuong || 1,
       mau: sp.mau || "",
       ghiChu: sp.ghiChu || "",
+      donGia: sp.donGia ?? null,
     }));
 
     // XÓA dòng hiện tại (nơi user vừa bấm mở Modal) 
@@ -744,6 +749,10 @@ const DonHangForm = () => {
     } else {
       formData.danhSachSanPham.forEach((sp, i) => {
         if (!sp.sanPham) errors.push(`Dòng ${i + 1}: Chưa chọn sản phẩm`);
+        else if (isMuaGium(sp.sanPham)) {
+          if (!(sp.ghiChu || "").trim()) errors.push(`Dòng ${i + 1}: Mua giùm nha khoa — nhập tên món hàng ở ô Ghi chú`);
+          if (sp.donGia === null || sp.donGia === undefined || sp.donGia === "") errors.push(`Dòng ${i + 1}: Mua giùm nha khoa — chưa nhập đơn giá`);
+        }
       });
     }
 
@@ -828,6 +837,21 @@ const DonHangForm = () => {
     if (!sanPhamId) return null;
     const sp = sanPhamList.find((s) => s._id === sanPhamId);
     return sp?.loaiTinh || null;
+  };
+
+  // Sản phẩm đại diện "Mua giùm nha khoa": nhập tay đơn giá, ghi chú = tên món hàng
+  const isMuaGium = (sanPhamId) => {
+    if (!sanPhamId) return false;
+    const sp = sanPhamList.find((s) => s._id === sanPhamId);
+    return sp?.nhomSanPham === NHOM_MUA_GIUM;
+  };
+
+  const formatDonGiaInput = (value) =>
+    value === null || value === undefined || value === "" ? "" : Number(value).toLocaleString("vi-VN");
+
+  const parseDonGiaInput = (raw) => {
+    const digits = String(raw || "").replace(/\D/g, "");
+    return digits === "" ? null : Number(digits);
   };
 
   const renderViTriText = (spRow) => {
@@ -1055,7 +1079,9 @@ const DonHangForm = () => {
                         <tr>
                           <th className="p-3 w-32 font-medium">Loại</th>
                           <th className="p-3 w-[30%] font-medium">Sản phẩm</th>
-                          <th className="p-3 w-52 font-medium">Vị trí</th>
+                          <th className="p-3 w-52 font-medium">
+                            {formData.danhSachSanPham.some((sp) => isMuaGium(sp.sanPham)) ? "Vị trí / Đơn giá" : "Vị trí"}
+                          </th>
                           <th className="p-3 w-52 text-center font-medium">
                             Số lượng
                           </th>
@@ -1114,6 +1140,22 @@ const DonHangForm = () => {
                               </td>
                               <td className="p-2">
                                 {(() => {
+                                  if (isMuaGium(sp.sanPham)) {
+                                    return (
+                                      <div className="flex items-center gap-1">
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={formatDonGiaInput(sp.donGia)}
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => handleSanPhamChange(index, "donGia", parseDonGiaInput(e.target.value))}
+                                          placeholder="Đơn giá..."
+                                          className="w-full border-b border-blue-200 p-1 outline-none bg-transparent text-right font-semibold text-gray-700"
+                                        />
+                                        <span className="text-gray-500">đ</span>
+                                      </div>
+                                    );
+                                  }
                                   const loaiTinh = getLoaiTinh(sp.sanPham);
                                   if (loaiTinh === "Bán hàm" || loaiTinh === "Hàm") {
                                     return (
@@ -1168,14 +1210,18 @@ const DonHangForm = () => {
                                 />
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="text"
-                                  value={sp.mau}
-                                  onChange={(e) =>
-                                    handleSanPhamChange(index, "mau", e.target.value)
-                                  }
-                                  className="w-full border-b border-blue-200 p-1 outline-none bg-transparent"
-                                />
+                                {isMuaGium(sp.sanPham) ? (
+                                  <span className="block text-center text-gray-400">—</span>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={sp.mau}
+                                    onChange={(e) =>
+                                      handleSanPhamChange(index, "mau", e.target.value)
+                                    }
+                                    className="w-full border-b border-blue-200 p-1 outline-none bg-transparent"
+                                  />
+                                )}
                               </td>
                               <td className="p-2">
                                 <input
@@ -1184,10 +1230,14 @@ const DonHangForm = () => {
                                   onChange={(e) =>
                                     handleSanPhamChange(index, "ghiChu", e.target.value)
                                   }
-                                  className="w-full border-b border-blue-200 p-1 outline-none bg-transparent"
+                                  placeholder={isMuaGium(sp.sanPham) ? "Tên món hàng (bắt buộc)..." : ""}
+                                  className={`w-full border-b p-1 outline-none bg-transparent ${isMuaGium(sp.sanPham) && !(sp.ghiChu || "").trim() ? "border-orange-400" : "border-blue-200"}`}
                                 />
                               </td>
                               <td className="p-2 text-center">
+                                {isMuaGium(sp.sanPham) ? (
+                                  <span className="text-gray-400">—</span>
+                                ) : (
                                 <button
                                   type="button"
                                   onClick={() => setYeuCauThuModal({ open: true, spIndex: index })}
@@ -1200,6 +1250,7 @@ const DonHangForm = () => {
                                     ? `Yêu cầu thử (${sp.yeuCauThu.length})`
                                     : "Yêu cầu thử"}
                                 </button>
+                                )}
                               </td>
                               <td className="p-2 text-center">
                                 <button
@@ -1242,6 +1293,7 @@ const DonHangForm = () => {
                                       soLuong: 1,
                                       mau: "",
                                       ghiChu: "",
+                                      donGia: null,
                                       yeuCauThu: [],
                                     },
                                   ],
@@ -1329,10 +1381,28 @@ const DonHangForm = () => {
                           />
                         </div>
 
-                        {/* Vị trí */}
+                        {/* Vị trí (hoặc Đơn giá nếu Mua giùm nha khoa) */}
                         <div>
-                          <label className="block text-base text-gray-500 mb-1">Vị trí</label>
+                          <label className="block text-base text-gray-500 mb-1">
+                            {isMuaGium(sp.sanPham) ? "Đơn giá" : "Vị trí"}
+                          </label>
                           {(() => {
+                            if (isMuaGium(sp.sanPham)) {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatDonGiaInput(sp.donGia)}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => handleSanPhamChange(index, "donGia", parseDonGiaInput(e.target.value))}
+                                    placeholder="Nhập đơn giá..."
+                                    className="w-full border border-blue-200 rounded p-2 outline-none bg-white text-right font-semibold text-gray-700 text-base"
+                                  />
+                                  <span className="text-gray-500">đ</span>
+                                </div>
+                              );
+                            }
                             const loaiTinh = getLoaiTinh(sp.sanPham);
                             if (loaiTinh === "Bán hàm" || loaiTinh === "Hàm") {
                               return (
@@ -1388,6 +1458,7 @@ const DonHangForm = () => {
                               className="w-full border border-blue-200 rounded p-2 outline-none bg-white text-center font-bold text-gray-700 text-base"
                             />
                           </div>
+                          {!isMuaGium(sp.sanPham) && (
                           <div>
                             <label className="block text-base text-gray-500 mb-1">Màu</label>
                             <input
@@ -1397,20 +1468,25 @@ const DonHangForm = () => {
                               className="w-full border border-blue-200 rounded p-2 outline-none bg-white text-base"
                             />
                           </div>
+                          )}
                         </div>
 
-                        {/* Ghi chú */}
+                        {/* Ghi chú (Mua giùm nha khoa: tên món hàng) */}
                         <div>
-                          <label className="block text-base text-gray-500 mb-1">Ghi chú</label>
+                          <label className="block text-base text-gray-500 mb-1">
+                            {isMuaGium(sp.sanPham) ? "Ghi chú (tên món hàng) *" : "Ghi chú"}
+                          </label>
                           <input
                             type="text"
                             value={sp.ghiChu}
                             onChange={(e) => handleSanPhamChange(index, "ghiChu", e.target.value)}
-                            className="w-full border border-blue-200 rounded p-2 outline-none bg-white text-base"
+                            placeholder={isMuaGium(sp.sanPham) ? "Tên món hàng..." : ""}
+                            className={`w-full border rounded p-2 outline-none bg-white text-base ${isMuaGium(sp.sanPham) && !(sp.ghiChu || "").trim() ? "border-orange-400" : "border-blue-200"}`}
                           />
                         </div>
 
                         {/* Yêu cầu thử */}
+                        {!isMuaGium(sp.sanPham) && (
                         <div>
                           <button
                             type="button"
@@ -1425,6 +1501,7 @@ const DonHangForm = () => {
                               : "Yêu cầu thử"}
                           </button>
                         </div>
+                        )}
                       </div>
                     ))}
 
@@ -1444,6 +1521,7 @@ const DonHangForm = () => {
                               soLuong: 1,
                               mau: "",
                               ghiChu: "",
+                              donGia: null,
                               yeuCauThu: [],
                             },
                           ],

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../config/api";
+import { getTenSanPhamDong } from "../../data/sanPhamConfig";
 
 const DonHangDeliveryNotePrintPreview = () => {
   const navigate = useNavigate();
@@ -95,7 +96,7 @@ const DonHangDeliveryNotePrintPreview = () => {
       const soLuong = sp.soLuong || 1;
 
       // 3. Tên sản phẩm
-      const ten = sp.sanPham?.tenSanPham || "";
+      const ten = getTenSanPhamDong(sp);
 
       // 4. Vị trí răng (thêm chữ R vào trước)
       const viTriText = sp.viTriText || buildTeethTextWithR(sp.viTri || sp.viTriRang);

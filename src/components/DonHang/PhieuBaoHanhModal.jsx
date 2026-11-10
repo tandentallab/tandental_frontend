@@ -4,6 +4,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { api } from "../../config/api";
 import { toast } from "sonner";
 import WarrantyCardPrint from "./WarrantyCardPrint";
+import { NHOM_MUA_GIUM } from "../../data/sanPhamConfig";
 
 const generateQRCode = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -166,7 +167,7 @@ const PhieuBaoHanhModal = ({ open, onClose, donHang, warranty, onSuccess }) => {
     return productOptions.filter((sp) => {
       const spId = sp.sanPham?._id || sp.sanPham;
       const donGia = mapGia[spId] ?? sp.sanPham?.donGiaChung ?? 0;
-      return !sanPhamDaCoPhieu.includes(spId) && sp.loaiDon === "Mới" && donGia > 0;
+      return !sanPhamDaCoPhieu.includes(spId) && sp.loaiDon === "Mới" && donGia > 0 && sp.sanPham?.nhomSanPham !== NHOM_MUA_GIUM;
     });
   }, [fullDonHang, warrantyState, mapGia, sanPhamDaCoPhieu]);
 
@@ -247,7 +248,7 @@ const PhieuBaoHanhModal = ({ open, onClose, donHang, warranty, onSuccess }) => {
           .filter((sp) => {
             const spId = sp.sanPham?._id || sp.sanPham;
             const donGia = mapGiaLocal[spId] ?? sp.sanPham?.donGiaChung ?? 0;
-            return sp.loaiDon === "Mới" && donGia > 0;
+            return sp.loaiDon === "Mới" && donGia > 0 && sp.sanPham?.nhomSanPham !== NHOM_MUA_GIUM;
           })
           .map((sp) => ({
             sanPham: sp.sanPham,

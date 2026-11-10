@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
 import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
+import { getTenSanPhamDong } from "../../data/sanPhamConfig";
 
 const PRODUCTION_STAGE_CONFIG = {
   "Report Toàn Sứ": {
@@ -282,7 +283,7 @@ const DonHangPrintPreview = () => {
                 donHang.danhSachSanPham.map((sp, index) => (
                   <tr key={index}>
                     <td style={{ border: "1px solid #000", padding: "0 6px", fontWeight: "bold" }}>
-                      {sp.sanPham?.tenSanPham || "---"}
+                      {getTenSanPhamDong(sp) || "---"}
                     </td>
                     <td style={{ border: "1px solid #000", textAlign: "center", fontWeight: "bold" }}>
                       {sp.soLuong || 1}
