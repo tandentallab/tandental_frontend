@@ -51,10 +51,7 @@ export default function PhieuNhapTable({ data, selectedId, onRowClick, hasMore, 
                                     <td className={`${rowBase} ${borderBottom}`}>{row.soPhieu}</td>
                                     <td className={`${rowBase} ${borderBottom}`}>{nccTen}</td>
                                     <td className={`${rowBase} ${borderBottom}`}>
-                                        {row.phiPhatSinh
-                                            ? (row.tongTien + row.phiPhatSinh).toLocaleString("vi-VN")
-                                            : (row.tongTien || 0).toLocaleString("vi-VN")
-                                        }
+                                        {(row.tongTien || 0).toLocaleString("vi-VN")}
                                     </td>
                                     <td
                                         className={`${borderBottom} pl-3`}

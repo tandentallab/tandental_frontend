@@ -42,10 +42,12 @@ const NhapKhoPrintPreview = () => {
     const formatCurrency = (value) =>
         new Intl.NumberFormat("vi-VN").format(value || 0);
 
-    const tongTien = (phieu.danhSachVatLieu || []).reduce(
+    const tienVatLieu = (phieu.danhSachVatLieu || []).reduce(
         (s, i) => s + (i.thanhTien || 0),
         0
     );
+    const phiPhatSinh = Number(phieu.phiPhatSinh) || 0;
+    const tongTien = tienVatLieu + phiPhatSinh;
 
     return (
         <div className="min-h-screen bg-gray-200">
@@ -160,6 +162,27 @@ const NhapKhoPrintPreview = () => {
                             ))}
                         </tbody>
                         <tfoot>
+                            {phiPhatSinh > 0 && (
+                                <>
+                                    <tr>
+                                        <td style={tdStyle({ textAlign: "center" })} colSpan={5}>
+                                            Tiền vật liệu
+                                        </td>
+                                        <td style={tdStyle({ textAlign: "right" })}>
+                                            {formatCurrency(tienVatLieu)} ₫
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style={tdStyle({ textAlign: "center" })} colSpan={5}>
+                                            Phí phát sinh
+                                            {phieu.lyDoPhiPhatSinh ? ` (${phieu.lyDoPhiPhatSinh})` : ""}
+                                        </td>
+                                        <td style={tdStyle({ textAlign: "right" })}>
+                                            {formatCurrency(phiPhatSinh)} ₫
+                                        </td>
+                                    </tr>
+                                </>
+                            )}
                             <tr style={{ fontWeight: "bold" }}>
                                 <td style={tdStyle({ textAlign: "center" })} colSpan={5}>
                                     Tổng cộng

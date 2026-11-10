@@ -53,6 +53,7 @@ export default function NhapKhoDetailModal({ phieu, onClose, onUpdated }) {
     const [updatingThanhToan, setUpdatingThanhToan] = useState(false);
     const [editingPhiPhatSinh, setEditingPhiPhatSinh] = useState(false);
     const [phiPhatSinhInput, setPhiPhatSinhInput] = useState(0);
+    const [lyDoPhiPhatSinhInput, setLyDoPhiPhatSinhInput] = useState("");
     const [savingPhiPhatSinh, setSavingPhiPhatSinh] = useState(false);
 
     const { user } = useSelector(state => state.auth);
@@ -140,15 +141,26 @@ export default function NhapKhoDetailModal({ phieu, onClose, onUpdated }) {
             return;
         }
         setPhiPhatSinhInput(fullPhieu?.phiPhatSinh || 0);
+        setLyDoPhiPhatSinhInput(fullPhieu?.lyDoPhiPhatSinh || "");
         setEditingPhiPhatSinh(true);
     }
 
     async function handleSavePhiPhatSinh() {
         if (!fullPhieu) return;
+        const phi = Number(phiPhatSinhInput) || 0;
+        const lyDo = lyDoPhiPhatSinhInput.trim();
+        if (phi > 0 && !lyDo) {
+            toast.error("Vui lòng nhập lí do phí phát sinh");
+            return;
+        }
         setSavingPhiPhatSinh(true);
         try {
             await dispatch(
-                updatePhieuNhapKho({ id: fullPhieu._id, phiPhatSinh: Number(phiPhatSinhInput) || 0 })
+                updatePhieuNhapKho({
+                    id: fullPhieu._id,
+                    phiPhatSinh: phi,
+                    lyDoPhiPhatSinh: phi > 0 ? lyDo : "",
+                })
             ).unwrap();
             const res = await dispatch(fetchPhieuNhapKhoById(fullPhieu._id)).unwrap();
             setFullPhieu(res.data || res);
@@ -301,6 +313,14 @@ export default function NhapKhoDetailModal({ phieu, onClose, onUpdated }) {
                                                     onChange={(e) => setPhiPhatSinhInput(e.target.value)}
                                                     className="border rounded px-2 py-1 text-base w-32 focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
                                                 />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Lí do (VD: phí vận chuyển)"
+                                                    value={lyDoPhiPhatSinhInput}
+                                                    onChange={(e) => setLyDoPhiPhatSinhInput(e.target.value)}
+                                                    onKeyDown={(e) => e.key === "Enter" && handleSavePhiPhatSinh()}
+                                                    className="border rounded px-2 py-1 text-base flex-1 min-w-[160px] focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
+                                                />
                                                 <button
                                                     type="button"
                                                     onClick={handleSavePhiPhatSinh}
@@ -324,6 +344,9 @@ export default function NhapKhoDetailModal({ phieu, onClose, onUpdated }) {
                                                     {fullPhieu.phiPhatSinh
                                                         ? Number(fullPhieu.phiPhatSinh).toLocaleString("vi-VN") + " ₫"
                                                         : "—"}
+                                                    {fullPhieu.phiPhatSinh > 0 && fullPhieu.lyDoPhiPhatSinh && (
+                                                        <span className="text-gray-500"> — {fullPhieu.lyDoPhiPhatSinh}</span>
+                                                    )}
                                                 </span>
                                                 <button
                                                     type="button"
