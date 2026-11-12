@@ -298,7 +298,13 @@ const donHangSlice = createSlice({
             })
             .addCase(fetchMoreDonHang.fulfilled, (state, action) => {
                 state.loadingMore = false;
-                state.data = [...state.data, ...(action.payload.data || [])];
+                // Bỏ kết quả "tải thêm" đến muộn (filter đã đổi / trang không liền kề)
+                const reqPage = Number(action.meta.arg?.page) || 0;
+                if (reqPage && reqPage !== (state.pagination?.currentPage || 0) + 1) return;
+                // Chống trùng đơn khi ghép trang
+                const seen = new Set(state.data.map((d) => d._id));
+                const more = (action.payload.data || []).filter((d) => !seen.has(d._id));
+                state.data = [...state.data, ...more];
                 state.pagination = {
                     total: action.payload.total || 0,
                     totalPages: action.payload.totalPages || 1,

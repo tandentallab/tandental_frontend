@@ -104,6 +104,19 @@ export const fetchDoanhSoThoiGian = createAsyncThunk(
     }
 );
 
+/* ================= 7. GET NĂNG SUẤT (ĐẾM RĂNG HK / TS) ================= */
+export const fetchNangSuat = createAsyncThunk(
+    "baoCao/fetchNangSuat",
+    async (params, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/baocao/nang-suat", { params });
+            return res.data.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.message || "Lỗi lấy báo cáo năng suất");
+        }
+    }
+);
+
 /* ================= SLICE ================= */
 const baoCaoSlice = createSlice({
     name: "baoCao",
@@ -135,6 +148,10 @@ const baoCaoSlice = createSlice({
         doanhSoThoiGianData: null,
         doanhSoThoiGianLoading: false,
         doanhSoThoiGianError: null,
+
+        nangSuatData: null,
+        nangSuatLoading: false,
+        nangSuatError: null,
     },
 
     reducers: {
@@ -155,6 +172,9 @@ const baoCaoSlice = createSlice({
             // Clear state doanh số thời gian
             state.doanhSoThoiGianData = null;
             state.doanhSoThoiGianError = null;
+
+            state.nangSuatData = null;
+            state.nangSuatError = null;
         }
     },
 
@@ -265,6 +285,20 @@ const baoCaoSlice = createSlice({
             .addCase(fetchDoanhSoThoiGian.rejected, (state, action) => {
                 state.doanhSoThoiGianLoading = false;
                 state.doanhSoThoiGianError = action.payload;
+            })
+
+            /* ===== CASE CỦA NĂNG SUẤT ===== */
+            .addCase(fetchNangSuat.pending, (state) => {
+                state.nangSuatLoading = true;
+                state.nangSuatError = null;
+            })
+            .addCase(fetchNangSuat.fulfilled, (state, action) => {
+                state.nangSuatLoading = false;
+                state.nangSuatData = action.payload;
+            })
+            .addCase(fetchNangSuat.rejected, (state, action) => {
+                state.nangSuatLoading = false;
+                state.nangSuatError = action.payload;
             });
     },
 });

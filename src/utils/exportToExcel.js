@@ -1126,6 +1126,95 @@ export const exportKeHoachGiaoHangToExcel = async (filteredOrders, formatSingleS
   saveAs(new Blob([buffer]), `KeHoach_GiaoHang_${dateStr}.xlsx`);
 };
 
+// Đơn hẹn lại: 2 mục "Hẹn đến ..." và "... hẹn đi" trên cùng 1 sheet
+// sections: [{ title, rows }]; mỗi row đã có henGiaoCu, henGiaoMoi, lyDoHenLaiDong
+export const exportDonHenLaiToExcel = async (sections, rangeLabel, formatSingleSanPham) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Đơn Hẹn Lại');
+  const company = await getCompanyInfo();
+
+  const headers = ['Nhận lúc', 'Số', 'Hẹn giao cũ', 'Hẹn giao mới', 'Khách hàng', 'Bác sĩ', 'Bệnh nhân', 'Răng', 'Trạng thái', 'Ghi chú (lý do hẹn lại)'];
+
+  [
+    company.Ten || '',
+    company.DiaChi ? `Địa chỉ: ${company.DiaChi}` : '',
+    company.DienThoai ? `Điện thoại: ${company.DienThoai}` : '',
+    company.Email ? `Email: ${company.Email}` : '',
+  ].forEach((text, i) => {
+    const r = i + 1;
+    worksheet.mergeCells(r, 1, r, 4);
+    const cell = worksheet.getCell(r, 1);
+    cell.value = text;
+    cell.font = { name: 'Arial', size: i === 0 ? 16 : 11, bold: i === 0 };
+    cell.alignment = { horizontal: 'left', vertical: 'middle' };
+  });
+
+  worksheet.mergeCells(6, 1, 6, headers.length);
+  const titleCell = worksheet.getCell(6, 1);
+  titleCell.value = `ĐƠN HẸN LẠI (${rangeLabel})`;
+  titleCell.font = { name: 'Arial', size: 16, bold: true };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (v) => {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '—';
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const maxLen = headers.map((h) => h.length * 1.05);
+  const centerCols = [1, 2, 3, 4, 9];
+
+  sections.forEach(({ title, rows }) => {
+    worksheet.addRow([]);
+    const sectionRow = worksheet.addRow([`${title} (${rows.length} đơn)`]);
+    worksheet.mergeCells(sectionRow.number, 1, sectionRow.number, headers.length);
+    sectionRow.getCell(1).font = { name: 'Arial', size: 13, bold: true };
+
+    const headerRow = worksheet.addRow(headers);
+    headerRow.eachCell((cell) => {
+      cell.font = { name: 'Arial', size: 12, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      applyBorder(cell, 'thin');
+    });
+
+    rows.forEach((o) => {
+      const values = [
+        fmt(o.ngayNhan),
+        o.maDonHang || `TAN${String(o._id).slice(-8).toUpperCase()}`,
+        fmt(o.henGiaoCu),
+        fmt(o.henGiaoMoi),
+        o.nhaKhoa?.tenGiaoDich || o.nhaKhoa?.hoVaTen || '',
+        o.bacSi?.hoVaTen || '',
+        o.benhNhan?.hoVaTen || '',
+        (o.danhSachSanPham || []).map(formatSingleSanPham).filter(Boolean).join('; '),
+        o.trangThai || '',
+        [o.lyDoHenLaiDong, o.ghiChuChung].filter(Boolean).join(' · '),
+      ];
+      const row = worksheet.addRow(values);
+      values.forEach((v, i) => { maxLen[i] = Math.max(maxLen[i], String(v).length); });
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.font = { name: 'Arial', size: 11 };
+        cell.alignment = { horizontal: centerCols.includes(colNumber) ? 'center' : 'left', vertical: 'middle' };
+        applyBorder(cell, 'thin');
+      });
+    });
+
+    if (rows.length === 0) {
+      const emptyRow = worksheet.addRow(['Không có dữ liệu']);
+      worksheet.mergeCells(emptyRow.number, 1, emptyRow.number, headers.length);
+      emptyRow.getCell(1).alignment = { horizontal: 'center' };
+      emptyRow.getCell(1).font = { name: 'Arial', size: 11, italic: true };
+    }
+  });
+
+  worksheet.columns = maxLen.map((len) => ({ width: Math.min(60, Math.ceil(len * 1.1) + 2) }));
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Don_Hen_Lai_${toFileDateSafe(new Date())}.xlsx`);
+};
+
 export const exportDanhSachNhaKhoaToExcel = async (data) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Danh Sách Nha Khoa');

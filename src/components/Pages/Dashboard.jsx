@@ -28,12 +28,14 @@ import HoaDonPage from "../HoaDon/HoaDonPage";
 import DonHangChuaXuatPage from "../DonHangChuaXuat/DonHangChuaXuatPage";
 import HoaDonDetail from "../HoaDon/HoaDonDetail";
 import KeHoachGiaoHangTable from "../KeHoachGiaoHang/KeHoachGiaoHangTable";
+import DonHenLaiPage from "../DonHenLai/DonHenLaiPage";
 import HoaDonPrintPreview from "../HoaDon/HoaDonPrintPreview";
 import BaoCaoDoanhThuPage from "../BaoCao/BaoCaoDoanhThuPage";
 import BaoCaoKhachHangPage from "../BaoCao/BaoCaoKhachHangPage";
 import DoanhSoKhachHangPage from "../BaoCao/DoanhSoKhachHangPage";
 import DoanhSoSanPhamPage from "../BaoCao/DoanhSoSanPhamPage";
 import DoanhSoThoiGianPage from "../BaoCao/DoanhSoThoiGianPage";
+import NangSuatPage from "../BaoCao/NangSuatPage";
 import BaoCaoPage from "../BaoCao/BaoCaoPage";
 import PhieuThuPage from "../PhieuThu/PhieuThuPage";
 import PhieuThuPrintPreview from "../PhieuThu/PhieuThuPrintPreview";
@@ -219,6 +221,10 @@ const Dashboard = () => {
             element={renderProtected("/bao-cao", <DoanhSoThoiGianPage />)}
           />
           <Route
+            path="/bao-cao/nang-suat"
+            element={renderProtected("/bao-cao", <NangSuatPage />)}
+          />
+          <Route
             path="/bao-cao"
             element={renderProtected("/bao-cao", <BaoCaoPage />)}
           />
@@ -292,6 +298,10 @@ const Dashboard = () => {
               "/ke-hoach-giao-hang",
               <KeHoachGiaoHangTable />
             )}
+          />
+          <Route
+            path="/don-hen-lai"
+            element={renderProtected("/don-hen-lai", <DonHenLaiPage />)}
           />
           <Route
             path="/hoa-don/:id/edit"

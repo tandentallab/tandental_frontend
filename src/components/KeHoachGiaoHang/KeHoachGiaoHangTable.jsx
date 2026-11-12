@@ -17,6 +17,7 @@ import {
 import { format, isToday, isBefore, startOfDay, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { exportKeHoachGiaoHangToExcel } from "../../utils/exportToExcel";
+import { calcPrintColWidths, fmtPrintDT, printMaDon, printTableCss } from "../../utils/printTable";
 import { FiSearch, FiRefreshCw, FiDownload, FiPrinter } from "react-icons/fi";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -118,7 +119,7 @@ const getDateRange = (preset) => {
   }
 };
 
-const DEFAULT_COL_WIDTHS = [140, 170, 140, 180, 110, 130, 200, 110, 150];
+const DEFAULT_COL_WIDTHS = [100, 100, 100, 150, 80, 130, 200, 100, 150];
 
 const KeHoachGiaoHangTable = () => {
   const dispatch = useDispatch();
@@ -226,7 +227,7 @@ const KeHoachGiaoHangTable = () => {
   }, []);
 
   const loadData = useCallback(() => {
-    const params = { page, limit: ROWS_PER_PAGE };
+    const params = { page, limit: ROWS_PER_PAGE, sortBy: "henGiao" };
 
     if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
     if (appliedNhaKhoa) params.nhaKhoa = appliedNhaKhoa._id;
@@ -493,7 +494,8 @@ const KeHoachGiaoHangTable = () => {
   };
 
   const filteredOrders = useMemo(
-    () => [...data].sort((a, b) => parseISO(a.henGiao) - parseISO(b.henGiao)),
+    // Backend đã trả về đúng thứ tự hẹn giao (sortBy=henGiao) → giữ nguyên thứ tự trang
+    () => data,
     [data]
   );
 
@@ -512,7 +514,7 @@ const KeHoachGiaoHangTable = () => {
   const fetchAllFiltered = useCallback(async () => {
     setLoadingAll(true);
     try {
-      const params = { page: 1, limit: 9999 };
+      const params = { page: 1, limit: 9999, sortBy: "henGiao" };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (appliedNhaKhoa) params.nhaKhoa = appliedNhaKhoa._id;
       if (appliedTrangThai.length > 0)
@@ -528,7 +530,7 @@ const KeHoachGiaoHangTable = () => {
 
       const res = await api.get("/donhang", { params });
       const all = res.data.data || [];
-      return [...all].sort((a, b) => parseISO(a.henGiao) - parseISO(b.henGiao));
+      return all;
     } finally {
       setLoadingAll(false);
     }
@@ -568,10 +570,13 @@ const KeHoachGiaoHangTable = () => {
   // 🔥 ĐÃ BỎ ĐOẠN CHẶN "LOADING CẢ PAGE" Ở ĐÂY ĐỂ TRÁNH GIẬT/CHỚP GIAO DIỆN
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen relative">
-      <div className="max-w-full mx-auto">
-        <div className="print:hidden">
-          <div className="flex w-full mb-3 rounded-lg overflow-hidden shadow-md">
+    <div
+      className="px-4 py-3 bg-gray-100 relative flex flex-col overflow-hidden print:block print:h-auto print:p-0 print:overflow-visible"
+      style={{ height: "calc(100vh - 70px)" }}
+    >
+      <div className="max-w-full w-full flex-1 min-h-0 flex flex-col print:block">
+        <div className="shrink-0 print:hidden">
+          <div className="flex w-full mb-2 rounded-lg overflow-hidden shadow-md">
             <div
               className={`flex-1 cursor-pointer bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white px-5 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-inner hover:scale-[1.02] hover:z-10 relative ${appliedHenGiao?.preset === "today"
                 ? "ring-2 ring-inset ring-white/50"
@@ -680,9 +685,9 @@ const KeHoachGiaoHangTable = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5 mb-2 px-1 print:hidden">
-          {/* Hàng 1: Filter button + Filter tags (wrappable) */}
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+        <div className="shrink-0 flex items-center gap-2 mb-2 px-1 print:hidden">
+          {/* Trái: nút lọc + tag (tag cuộn ngang nếu dài, không xuống hàng) */}
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
             <div className="relative shrink-0" ref={filterRef}>
               <button
                 onClick={handleOpenFilter}
@@ -904,6 +909,7 @@ const KeHoachGiaoHangTable = () => {
               )}
             </div>
 
+            <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap">
             {appliedHenGiao?.preset && (
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
                 <CalendarTodayIcon sx={{ fontSize: 11 }} />
@@ -994,11 +1000,12 @@ const KeHoachGiaoHangTable = () => {
                 </button>
               </span>
             ))}
+            </div>
           </div>
 
-          {/* Hàng 2: Search + Action buttons */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 min-w-0">
+          {/* Phải: tìm kiếm + thao tác */}
+          <div className="shrink-0 flex items-center gap-1">
+            <div className="relative w-48 xl:w-60 mr-1">
               <FiSearch
                 size={15}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
@@ -1051,7 +1058,7 @@ const KeHoachGiaoHangTable = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded shadow-sm overflow-hidden border print:hidden">
+        <div className="flex-1 min-h-0 overflow-auto bg-white rounded shadow-sm border print:hidden">
           <div className="sm:hidden divide-y divide-gray-100">
             {/* 🔥 HIỆU ỨNG LOADING MƯỢT MÀ TRONG BẢNG MOBILE */}
             {loading && page === 1 ? (
@@ -1134,7 +1141,7 @@ const KeHoachGiaoHangTable = () => {
             )}
           </div>
 
-          <div className="hidden sm:block overflow-x-auto">
+          <div className="hidden sm:block">
             <table
               className="text-base text-left"
               style={{
@@ -1275,14 +1282,13 @@ const KeHoachGiaoHangTable = () => {
               </tbody>
             </table>
           </div>
+          <div ref={sentinelRef} className="h-4" />
+          {loadingMore && (
+            <div className="text-center py-3 text-gray-400 text-base print:hidden">
+              Đang tải thêm...
+            </div>
+          )}
         </div>
-
-        <div ref={sentinelRef} className="h-4" />
-        {loadingMore && (
-          <div className="text-center py-3 text-gray-400 text-base print:hidden">
-            Đang tải thêm...
-          </div>
-        )}
 
         <div id="print-section" className="hidden print:block w-full">
           <style>{`
@@ -1303,110 +1309,86 @@ const KeHoachGiaoHangTable = () => {
               }
               #print-section h2 { margin: 0 0 6px 0 !important; padding: 0 !important; text-align: center !important; font-size: 16px !important; font-weight: bold !important; text-transform: uppercase !important; }
               #print-section h3 { margin: 10px 0 4px 0 !important; padding: 0 !important; font-size: 13px !important; font-weight: bold !important; }
-              #print-section table { width: 100% !important; border-collapse: collapse !important; margin: 0 !important; padding: 0 !important; }
-              #print-section thead { display: table-header-group !important; }
-              #print-section tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-              #print-section table td, #print-section table th { border: 1px solid black !important; padding: 2px 4px !important; font-size: 12px !important; line-height: 1.25 !important; vertical-align: middle !important; }
-              #print-section table th { background-color: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              ${printTableCss("#print-section")}
             }
           `}</style>
           <h2 className="text-xl font-bold text-center mb-4 uppercase">
             Kế Hoạch Giao Hàng
           </h2>
           {(() => {
-            // Tách đơn có lý do hẹn lại xuống mục riêng (giống file Excel)
+            // In 1 bảng duy nhất (đơn hẹn lại đã có tab "Đơn hẹn lại" riêng)
             const allPrintOrders = printOrders ?? filteredOrders;
-            const donThuong = allPrintOrders.filter((o) => !(o.lyDoHenLai || "").trim());
-            const donHenLai = allPrintOrders.filter((o) => (o.lyDoHenLai || "").trim());
-            const baseHeaders = ["Nhận lúc", "Số", "Khách hàng", "Bệnh nhân", "Răng", "Hẹn giao", "Ghi chú"];
+            const headers = ["Nhận lúc", "Số", "Khách hàng", "Bệnh nhân", "Răng", "Hẹn giao", "Ghi chú"];
 
-            const renderTable = (orders, withLyDo) => {
-              const headers = withLyDo ? [...baseHeaders, "Lý do hẹn"] : baseHeaders;
-              return (
-          <table className="w-full border-collapse border border-black">
-            <thead>
-              <tr>
-                {headers.map((h) => (
-                  <th
-                    key={h}
-                    className="border border-black px-2 py-1 text-center font-semibold"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {orders.flatMap((order) => {
+            const renderTable = (orders) => {
+              // Mỗi sản phẩm 1 dòng; giá trị định dạng sẵn để vừa in vừa đo độ rộng cột
+              const rows = orders.flatMap((order) => {
                 const dssp = order.danhSachSanPham || [];
                 const products = dssp.length > 0 ? dssp : [null];
-                const maDon =
-                  order.maDonHang ||
-                  `TAN${order._id
-                    .substring(order._id.length - 8)
-                    .toUpperCase()}`;
-                return products.map((sp, spIdx) => (
-                  <tr key={`${order._id}_${spIdx}`}>
-                    <td className="border border-black px-2 py-1 text-center">
-                      {order.ngayNhan
-                        ? format(parseISO(order.ngayNhan), "dd/MM/yyyy HH:mm")
-                        : "—"}
-                    </td>
-                    <td className="border border-black px-2 py-1 text-center font-semibold">
-                      {maDon}
-                    </td>
-                    <td className="border border-black px-2 py-1">
-                      {order.nhaKhoa?.tenGiaoDich || order.nhaKhoa?.hoVaTen}
-                    </td>
-                    <td className="border border-black px-2 py-1">
-                      {order.benhNhan?.hoVaTen}
-                    </td>
-                    <td className="border border-black px-2 py-1">
-                      {formatSingleSanPham(sp)}
-                    </td>
-                    <td className="border border-black px-2 py-1 text-center">
-                      {order.henGiao
-                        ? format(parseISO(order.henGiao), "dd/MM/yyyy HH:mm")
-                        : "—"}
-                    </td>
-                    <td className="border border-black px-2 py-1">
-                      {order.ghiChuChung}
-                    </td>
-                    {withLyDo && (
-                      <td className="border border-black px-2 py-1">
-                        {order.lyDoHenLai}
-                      </td>
+                return products.map((sp, spIdx) => ({
+                  key: `${order._id}_${spIdx}`,
+                  values: [
+                    fmtPrintDT(order.ngayNhan),
+                    printMaDon(order),
+                    order.nhaKhoa?.tenGiaoDich || order.nhaKhoa?.hoVaTen || "",
+                    order.benhNhan?.hoVaTen || "",
+                    formatSingleSanPham(sp),
+                    fmtPrintDT(order.henGiao),
+                    order.ghiChuChung || "",
+                  ],
+                }));
+              });
+              // nowrap: luôn 1 hàng; số: cột chữ (tối đa px, vượt mới xuống hàng); flex: cột Răng
+              // Ưu tiên chỗ cho các cột chữ (mức tối đa rộng), cột Răng chỉ lấy phần còn lại (tối thiểu 160px)
+              const colTypes = ["nowrap", "nowrap", 280, 220, "flex", "nowrap", 360];
+              const colWidths = calcPrintColWidths(headers, rows.map((r) => r.values), colTypes, 160);
+              const centerCols = [0, 1, 5];
+              return (
+                <table>
+                  <colgroup>
+                    {colWidths.map((w, i) => (
+                      <col key={i} style={w ? { width: w } : undefined} />
+                    ))}
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {headers.map((h, i) => (
+                        <th key={h} className={`text-center ${colTypes[i] === "nowrap" ? "nowrap" : ""}`}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(({ key, values }) => (
+                      <tr key={key}>
+                        {values.map((v, i) => (
+                          <td
+                            key={i}
+                            className={[
+                              colTypes[i] === "nowrap" ? "nowrap" : "",
+                              centerCols.includes(i) ? "text-center" : "",
+                              i === 1 ? "font-semibold" : "",
+                            ].join(" ")}
+                          >
+                            {v}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {rows.length === 0 && (
+                      <tr>
+                        <td colSpan={headers.length} className="text-center py-4">
+                          Không có dữ liệu
+                        </td>
+                      </tr>
                     )}
-                  </tr>
-                ));
-              })}
-              {orders.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={headers.length}
-                    className="border border-black text-center py-4"
-                  >
-                    Không có dữ liệu
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </tbody>
+                </table>
               );
             };
 
-            return (
-              <>
-                {/* Bảng đầu ẩn nếu rỗng mà có đơn hẹn lại */}
-                {(donThuong.length > 0 || donHenLai.length === 0) && renderTable(donThuong, false)}
-                {donHenLai.length > 0 && (
-                  <>
-                    <h3 className="font-bold mt-3 mb-1">Đơn hẹn lại</h3>
-                    {renderTable(donHenLai, true)}
-                  </>
-                )}
-              </>
-            );
+            return renderTable(allPrintOrders);
           })()}
         </div>
       </div>

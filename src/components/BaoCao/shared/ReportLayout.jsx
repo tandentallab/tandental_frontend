@@ -11,6 +11,7 @@ import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import SpeedIcon from '@mui/icons-material/Speed';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const SIDEBAR_EXPANDED = 265;
@@ -22,6 +23,7 @@ const REPORT_MENU = [
     { path: '/bao-cao/doanh-so', label: 'Doanh số theo khách hàng', icon: <StorefrontIcon fontSize="small" /> },
     { path: '/bao-cao/doanh-so-san-pham', label: 'Doanh số theo sản phẩm', icon: <Inventory2Icon fontSize="small" /> },
     { path: '/bao-cao/doanh-so-thoi-gian', label: 'Doanh số theo thời gian', icon: <TimelineIcon fontSize="small" /> },
+    { path: '/bao-cao/nang-suat', label: 'Năng suất', icon: <SpeedIcon fontSize="small" /> },
 ];
 
 const SidebarContent = ({ collapsed, onCollapse, onNavigate }) => {
@@ -36,6 +38,7 @@ const SidebarContent = ({ collapsed, onCollapse, onNavigate }) => {
         { bg: '#dcfce7', border: '#4ade80', icon: '#15803d' },
         { bg: '#fef9c3', border: '#facc15', icon: '#a16207' },
         { bg: '#ffedd5', border: '#fdba74', icon: '#ea580c' },
+        { bg: '#fce7f3', border: '#f9a8d4', icon: '#be185d' },
     ];
 
     const getItemSx = (active) => ({
@@ -90,7 +93,7 @@ const SidebarContent = ({ collapsed, onCollapse, onNavigate }) => {
                         location.pathname === item.path ||
                         (item.path === '/bao-cao' && location.pathname === '/bao-cao/san-luong');
 
-                    const colors = ITEM_COLORS[idx];
+                    const colors = ITEM_COLORS[idx % ITEM_COLORS.length];
 
                     const button = (
                         <ListItemButton
@@ -242,17 +245,6 @@ const ReportLayout = ({ children, title }) => {
                             <ChevronRightIcon sx={{ color: '#1e3a8a' }} />
                         </IconButton>
                     )}
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            fontWeight: 700,
-                            color: "black",
-                            lineHeight: 1,
-                            fontSize: { xs: '1.1rem', md: '1.25rem' }
-                        }}
-                    >
-                        {title || 'Báo Cáo Thống Kê'}
-                    </Typography>
                 </Box>
 
                 <Box sx={{ flex: 1, overflow: 'auto', px: { xs: 2, md: 3 }, pb: { xs: 2, md: 3 }, pt: 0 }}>

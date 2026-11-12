@@ -22,6 +22,7 @@ import BadgeIcon from "@mui/icons-material/Badge";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import HistoryIcon from "@mui/icons-material/History";
+import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 
 export const MAIN_MENU = [
   { name: "Thống kê", router: "/", icon: <Dashboard /> },
@@ -30,6 +31,11 @@ export const MAIN_MENU = [
     name: "Kế Hoạch Giao Hàng",
     router: "/ke-hoach-giao-hang",
     icon: <Assignment />,
+  },
+  {
+    name: "Đơn hẹn lại",
+    router: "/don-hen-lai",
+    icon: <EventRepeatIcon />,
   },
   {
     name: "Chờ xuất hóa đơn",
