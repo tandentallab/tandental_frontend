@@ -225,10 +225,10 @@ const HenLaiTable = ({
 };
 
 /* ================= Bản in (A4 ngang) ================= */
-const PRINT_HEADERS = ["Nhận lúc", "Số", "Hẹn giao cũ", "Hẹn giao mới", "Khách hàng", "Bác sĩ", "Bệnh nhân", "Răng", "Trạng thái", "Ghi chú"];
+const PRINT_HEADERS = ["Nhận lúc", "Số", "Hẹn giao cũ", "Hẹn giao mới", "Khách hàng", "Bệnh nhân", "Răng", "Ghi chú"];
 // nowrap: luôn 1 hàng; số: cột chữ (tối đa px, vượt mới xuống hàng); flex: cột Răng
-const PRINT_COL_TYPES = ["nowrap", "nowrap", "nowrap", "nowrap", 140, 110, 120, "flex", "nowrap", 170];
-const PRINT_CENTER_COLS = [0, 1, 2, 3, 8];
+const PRINT_COL_TYPES = ["nowrap", "nowrap", "nowrap", "nowrap", 160, 130, "flex", 220];
+const PRINT_CENTER_COLS = [0, 1, 2, 3];
 
 const toPrintValues = (row) => [
   fmtPrintDT(row.ngayNhan),
@@ -236,10 +236,8 @@ const toPrintValues = (row) => [
   fmtPrintDT(row.henGiaoCu),
   fmtPrintDT(row.henGiaoMoi),
   row.nhaKhoa?.tenGiaoDich || row.nhaKhoa?.hoVaTen || "",
-  row.bacSi?.hoVaTen || "",
   row.benhNhan?.hoVaTen || "",
   (row.danhSachSanPham || []).map(formatSingleSanPham).filter(Boolean).join("; "),
-  row.trangThai || "",
   [row.lyDoHenLaiDong, row.ghiChuChung].filter(Boolean).join(" · "),
 ];
 
@@ -341,6 +339,9 @@ const DonHenLaiPage = () => {
 
   const [draftNhaKhoa, setDraftNhaKhoa] = useState(null);
   const [draftTrangThai, setDraftTrangThai] = useState([]);
+  // Ngày hẹn trong bảng lọc (chỉ hiện trên mobile, nơi ô chọn ngày ở thanh công cụ bị ẩn)
+  const [draftDate, setDraftDate] = useState(null);
+  const [anchorDraftCal, setAnchorDraftCal] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
   const [showNhaKhoaPicker, setShowNhaKhoaPicker] = useState(false);
   const [nhaKhoaSearch, setNhaKhoaSearch] = useState("");
@@ -452,6 +453,7 @@ const DonHenLaiPage = () => {
   const handleOpenFilter = () => {
     setDraftNhaKhoa(nhaKhoa);
     setDraftTrangThai([...trangThai]);
+    setDraftDate(dateFilter);
     setShowNhaKhoaPicker(false);
     setShowFilter(true);
   };
@@ -459,6 +461,7 @@ const DonHenLaiPage = () => {
   const handleApplyFilters = () => {
     setNhaKhoa(draftNhaKhoa);
     setTrangThai(draftTrangThai);
+    if (draftDate) setDateFilter(draftDate);
     setShowFilter(false);
   };
 
@@ -516,6 +519,47 @@ const DonHenLaiPage = () => {
 
             {showFilter && (
               <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white rounded-xl shadow-2xl border border-gray-200">
+                {/* Ngày hẹn — chỉ trên mobile */}
+                {draftDate && (
+                  <div className="min-[900px]:hidden border-b border-gray-100 px-3 py-2.5">
+                    <p className="text-base text-gray-400 mb-1.5">Ngày hẹn</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DATE_PRESETS.filter((p) => !p.isCalendar).map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => setDraftDate(makePresetDate(p.key))}
+                          className={`px-2.5 py-1 rounded-full border text-base font-medium transition-all ${draftDate.preset === p.key ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                            }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                      <button
+                        onClick={(e) => setAnchorDraftCal(e.currentTarget)}
+                        className={`px-2.5 py-1 rounded-full border text-base font-medium transition-all inline-flex items-center gap-1 ${draftDate.preset === "custom" ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        <CalendarTodayIcon sx={{ fontSize: 14 }} />
+                        {draftDate.preset === "custom"
+                          ? draftDate.from === draftDate.to
+                            ? dayjs(draftDate.from).format("DD/MM/YYYY")
+                            : `${dayjs(draftDate.from).format("DD/MM")} - ${dayjs(draftDate.to).format("DD/MM")}`
+                          : "Chọn trên lịch"}
+                      </button>
+                    </div>
+                    <CustomDateRangePicker
+                      open={Boolean(anchorDraftCal)}
+                      anchorEl={anchorDraftCal}
+                      onClose={() => setAnchorDraftCal(null)}
+                      initialDates={{ start: draftDate.from, end: draftDate.to }}
+                      onApply={(dates) => {
+                        setAnchorDraftCal(null);
+                        if (!dates?.start) return;
+                        setDraftDate({ preset: "custom", from: dates.start, to: dates.end || dates.start });
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="relative border-b border-gray-100">
                   {showNhaKhoaPicker ? (
                     <div className="px-3 py-2">
@@ -622,7 +666,7 @@ const DonHenLaiPage = () => {
         {/* Giữa: ngày + preset + tag (cuộn ngang nếu quá dài, không xuống hàng) */}
         <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap">
           {/* Chọn ngày */}
-          <div className="flex items-center bg-white border rounded-full overflow-hidden shrink-0">
+          <div className="hidden min-[900px]:flex items-center bg-white border rounded-full overflow-hidden shrink-0">
             <button onClick={() => shiftDate(-1)} className="px-2 py-1.5 text-gray-500 hover:bg-gray-100" title="Lùi">
               <FiChevronLeft size={16} />
             </button>
@@ -654,7 +698,7 @@ const DonHenLaiPage = () => {
             <button
               key={p.key}
               onClick={() => setDateFilter(makePresetDate(p.key))}
-              className={`px-2.5 py-1 rounded-full border text-sm font-medium transition ${dateFilter.preset === p.key
+              className={`hidden min-[900px]:inline-block px-2.5 py-1 rounded-full border text-sm font-medium transition ${dateFilter.preset === p.key
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
                 }`}

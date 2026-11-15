@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import { Box, CircularProgress } from '@mui/material';
@@ -6,8 +6,7 @@ import ReportLayout from './shared/ReportLayout';
 import DynamicFilterBar from './shared/DynamicFilterBar';
 import { fetchNangSuat } from '../../redux/slices/baoCaoSlice';
 import NangSuatChart from './NangSuatChart';
-import { api } from '../../config/api';
-import { printPhieuNangSuat } from './printPhieuNangSuat';
+import { printBangNangSuat } from './printBangNangSuat';
 
 const computeDateRange = (filter, customDates) => {
     if (filter === 'custom') return { startDate: customDates.start, endDate: customDates.end };
@@ -84,11 +83,6 @@ const SummaryCard = ({ label, card, data, active, onClick }) => (
 
 const NangSuatPage = () => {
     const dispatch = useDispatch();
-    // Tên / SĐT công ty cho đầu phiếu in
-    const [company, setCompany] = useState(null);
-    useEffect(() => {
-        api.get('/cong-ty').then((res) => setCompany(res.data?.data || null)).catch(() => { });
-    }, []);
     const [hasSearched, setHasSearched] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState('this_month');
     const [customDates, setCustomDates] = useState({ start: dayjs().format('YYYY-MM-DD'), end: dayjs().format('YYYY-MM-DD') });
@@ -134,15 +128,6 @@ const NangSuatPage = () => {
 
     const tongHop = nangSuatData?.tongHop || emptyBucket();
 
-    // Cột Tổng cuối: hiển thị dạng "Mới / (Sửa + Làm lại/Bảo hành)"
-    // field: 'hopKim' | 'toanSu' | 'tong'
-    const renderMoiKhac = (b, field = 'tong') => (
-        <>
-            <span className="font-bold">{fmt(b.moi[field])}</span>
-            <span className="opacity-60"> / {fmt(b.sua[field] + b.lamLaiBaoHanh[field])}</span>
-        </>
-    );
-
     const rangeText = appliedRange
         ? appliedRange.startDate === appliedRange.endDate
             ? dayjs(appliedRange.startDate).format('DD/MM/YYYY')
@@ -154,7 +139,7 @@ const NangSuatPage = () => {
             alert('Vui lòng bấm "Xem" để tải dữ liệu trước khi in.');
             return;
         }
-        printPhieuNangSuat({ company, rangeText, tongHop });
+        printBangNangSuat({ rangeText, rows: detailRows, tongHop, isMonthly });
     };
 
     const th = 'px-3 py-2 font-semibold text-center whitespace-nowrap border border-gray-300';
@@ -239,9 +224,9 @@ const NangSuatPage = () => {
                                                         <td className={`${td} ${hl(l.key)}`}>{fmt(r[l.key].toanSu)}</td>
                                                     </React.Fragment>
                                                 ))}
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(r, 'hopKim')}</td>
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(r, 'toanSu')}</td>
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(r)}</td>
+                                                <td className={`${td} ${hl('tong')}`}>{fmt(r.tong.hopKim)}</td>
+                                                <td className={`${td} ${hl('tong')}`}>{fmt(r.tong.toanSu)}</td>
+                                                <td className={`${td} font-bold ${hl('tong')}`}>{fmt(r.tong.tong)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -255,9 +240,9 @@ const NangSuatPage = () => {
                                                         <td className={`${td} ${hl(l.key)}`}>{fmt(tongHop[l.key].toanSu)}</td>
                                                     </React.Fragment>
                                                 ))}
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(tongHop, 'hopKim')}</td>
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(tongHop, 'toanSu')}</td>
-                                                <td className={`${td} ${hl('tong')}`}>{renderMoiKhac(tongHop)}</td>
+                                                <td className={`${td} ${hl('tong')}`}>{fmt(tongHop.tong.hopKim)}</td>
+                                                <td className={`${td} ${hl('tong')}`}>{fmt(tongHop.tong.toanSu)}</td>
+                                                <td className={`${td} ${hl('tong')}`}>{fmt(tongHop.tong.tong)}</td>
                                             </tr>
                                         </tfoot>
                                     )}

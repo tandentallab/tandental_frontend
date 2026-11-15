@@ -603,7 +603,7 @@ const KeHoachGiaoHangTable = () => {
                   {loadingThongKe ? "..." : giaoHomNay}
                 </div>
                 <div className="text-base font-semibold mt-0.5 opacity-90">
-                  Giao hôm nay
+                  Hôm nay
                 </div>
               </div>
             </div>
@@ -909,97 +909,98 @@ const KeHoachGiaoHangTable = () => {
               )}
             </div>
 
-            <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap">
-            {appliedHenGiao?.preset && (
-              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
-                <CalendarTodayIcon sx={{ fontSize: 11 }} />
-                Hẹn giao: {getDateLabel(appliedHenGiao)}
-                {appliedHenGiao.preset === "custom" &&
-                  appliedHenGiao.customFrom &&
-                  ` ${dayjs(appliedHenGiao.customFrom).format("DD/MM/YYYY")}`}
-                {appliedHenGiao.preset === "custom" &&
-                  appliedHenGiao.customTo &&
-                  ` → ${dayjs(appliedHenGiao.customTo).format("DD/MM/YYYY")}`}
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setKeHoachGiaoHangPageFilter({
-                        appliedHenGiao: EMPTY_DATE,
-                      })
-                    );
-                    setPage(1);
-                  }}
-                  className="ml-0.5 hover:text-blue-900 flex items-center"
+            {/* Tag bộ lọc đang áp dụng — ẩn trên mobile (nút lọc vẫn có chấm xanh báo đang lọc) */}
+            <div className="flex-1 min-w-0 hidden min-[900px]:flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap">
+              {appliedHenGiao?.preset && (
+                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
+                  <CalendarTodayIcon sx={{ fontSize: 11 }} />
+                  Hẹn giao: {getDateLabel(appliedHenGiao)}
+                  {appliedHenGiao.preset === "custom" &&
+                    appliedHenGiao.customFrom &&
+                    ` ${dayjs(appliedHenGiao.customFrom).format("DD/MM/YYYY")}`}
+                  {appliedHenGiao.preset === "custom" &&
+                    appliedHenGiao.customTo &&
+                    ` → ${dayjs(appliedHenGiao.customTo).format("DD/MM/YYYY")}`}
+                  <button
+                    onClick={() => {
+                      dispatch(
+                        setKeHoachGiaoHangPageFilter({
+                          appliedHenGiao: EMPTY_DATE,
+                        })
+                      );
+                      setPage(1);
+                    }}
+                    className="ml-0.5 hover:text-blue-900 flex items-center"
+                  >
+                    <CloseIcon sx={{ fontSize: 12 }} />
+                  </button>
+                </span>
+              )}
+              {appliedNgayNhan?.preset && (
+                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
+                  <CalendarTodayIcon sx={{ fontSize: 11 }} />
+                  Nhận: {getDateLabel(appliedNgayNhan)}
+                  {appliedNgayNhan.preset === "custom" &&
+                    appliedNgayNhan.customFrom &&
+                    ` ${dayjs(appliedNgayNhan.customFrom).format("DD/MM/YYYY")}`}
+                  {appliedNgayNhan.preset === "custom" &&
+                    appliedNgayNhan.customTo &&
+                    ` → ${dayjs(appliedNgayNhan.customTo).format("DD/MM/YYYY")}`}
+                  <button
+                    onClick={() => {
+                      dispatch(
+                        setKeHoachGiaoHangPageFilter({
+                          appliedNgayNhan: EMPTY_DATE,
+                        })
+                      );
+                      setPage(1);
+                    }}
+                    className="ml-0.5 hover:text-blue-900 flex items-center"
+                  >
+                    <CloseIcon sx={{ fontSize: 12 }} />
+                  </button>
+                </span>
+              )}
+              {appliedNhaKhoa && (
+                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
+                  <StoreIcon sx={{ fontSize: 11 }} />
+                  {appliedNhaKhoa.name}
+                  <button
+                    onClick={() => {
+                      dispatch(
+                        setKeHoachGiaoHangPageFilter({ appliedNhaKhoa: null })
+                      );
+                      setPage(1);
+                    }}
+                    className="ml-0.5 hover:text-blue-900 flex items-center"
+                  >
+                    <CloseIcon sx={{ fontSize: 12 }} />
+                  </button>
+                </span>
+              )}
+              {appliedTrangThai.map((status) => (
+                <span
+                  key={status}
+                  className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full"
                 >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </button>
-              </span>
-            )}
-            {appliedNgayNhan?.preset && (
-              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
-                <CalendarTodayIcon sx={{ fontSize: 11 }} />
-                Nhận: {getDateLabel(appliedNgayNhan)}
-                {appliedNgayNhan.preset === "custom" &&
-                  appliedNgayNhan.customFrom &&
-                  ` ${dayjs(appliedNgayNhan.customFrom).format("DD/MM/YYYY")}`}
-                {appliedNgayNhan.preset === "custom" &&
-                  appliedNgayNhan.customTo &&
-                  ` → ${dayjs(appliedNgayNhan.customTo).format("DD/MM/YYYY")}`}
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setKeHoachGiaoHangPageFilter({
-                        appliedNgayNhan: EMPTY_DATE,
-                      })
-                    );
-                    setPage(1);
-                  }}
-                  className="ml-0.5 hover:text-blue-900 flex items-center"
-                >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </button>
-              </span>
-            )}
-            {appliedNhaKhoa && (
-              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
-                <StoreIcon sx={{ fontSize: 11 }} />
-                {appliedNhaKhoa.name}
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setKeHoachGiaoHangPageFilter({ appliedNhaKhoa: null })
-                    );
-                    setPage(1);
-                  }}
-                  className="ml-0.5 hover:text-blue-900 flex items-center"
-                >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </button>
-              </span>
-            )}
-            {appliedTrangThai.map((status) => (
-              <span
-                key={status}
-                className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full"
-              >
-                {status}
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setKeHoachGiaoHangPageFilter({
-                        appliedTrangThai: appliedTrangThai.filter(
-                          (s) => s !== status
-                        ),
-                      })
-                    );
-                    setPage(1);
-                  }}
-                  className="ml-0.5 hover:text-blue-900 flex items-center"
-                >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </button>
-              </span>
-            ))}
+                  {status}
+                  <button
+                    onClick={() => {
+                      dispatch(
+                        setKeHoachGiaoHangPageFilter({
+                          appliedTrangThai: appliedTrangThai.filter(
+                            (s) => s !== status
+                          ),
+                        })
+                      );
+                      setPage(1);
+                    }}
+                    className="ml-0.5 hover:text-blue-900 flex items-center"
+                  >
+                    <CloseIcon sx={{ fontSize: 12 }} />
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
 
@@ -1059,18 +1060,18 @@ const KeHoachGiaoHangTable = () => {
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto bg-white rounded shadow-sm border print:hidden">
-          <div className="sm:hidden divide-y divide-gray-100">
-            {/* 🔥 HIỆU ỨNG LOADING MƯỢT MÀ TRONG BẢNG MOBILE */}
+          {/* ── MOBILE: thẻ giống trang Đơn hàng (mỗi sản phẩm 1 thẻ) ── */}
+          <div className="sm:hidden p-2 bg-gray-100">
             {loading && page === 1 ? (
               <div className="flex justify-center py-10">
                 <CircularProgress size={28} sx={{ color: "#26a69a" }} />
               </div>
-            ) : filteredOrders.length === 0 ? (
+            ) : expandedRows.length === 0 ? (
               <p className="text-center py-8 text-gray-500 text-base">
                 Không có dữ liệu
               </p>
             ) : (
-              filteredOrders.map((order) => {
+              expandedRows.map(({ order, sp, spIdx }) => {
                 const date = parseISO(order.henGiao);
                 const overdue =
                   isBefore(date, todayStart) &&
@@ -1080,60 +1081,48 @@ const KeHoachGiaoHangTable = () => {
                   `TAN${order._id
                     .substring(order._id.length - 8)
                     .toUpperCase()}`;
+                const nhaKhoa =
+                  order.nhaKhoa?.tenGiaoDich || order.nhaKhoa?.hoVaTen || "";
+                const benhNhan = order.benhNhan?.hoVaTen || "";
                 return (
                   <div
-                    key={order._id}
+                    key={`${order._id}_${spIdx}`}
                     onClick={() => setSelectedDonHang(order)}
-                    className={`px-4 py-3 cursor-pointer transition-colors ${selectedDonHang?._id === order._id
-                      ? "bg-sky-100"
-                      : "hover:bg-gray-50"
-                      }`}
+                    className={`mb-3 rounded-md shadow bg-white ${mobileTopBorder(order, date, overdue)} ${selectedDonHang?._id === order._id ? "ring-2 ring-sky-300" : ""}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/donhang/${order._id}/edit`);
-                        }}
-                        className={`font-semibold text-base hover:underline ${overdue ? "text-red-500" : "text-blue-700"
-                          }`}
-                      >
-                        {maDon}
-                      </button>
-                      <TrangThaiBadge value={order.trangThai} />
+                    <div className="flex items-center justify-between border-b border-b-gray-100 px-2 py-1 mb-1">
+                      <p className="text-gray-400">Số</p>
+                      <p>{maDon}</p>
                     </div>
-                    <p className="text-base text-gray-800 font-medium truncate">
-                      {order.nhaKhoa?.tenGiaoDich ||
-                        order.nhaKhoa?.hoVaTen ||
-                        "—"}
-                    </p>
-                    {(order.bacSi?.hoVaTen || order.benhNhan?.hoVaTen) && (
-                      <p className="text-base text-gray-500 mt-0.5 truncate">
-                        {[
-                          order.bacSi?.hoVaTen && `BS: ${order.bacSi.hoVaTen}`,
-                          order.benhNhan?.hoVaTen &&
-                          `BN: ${order.benhNhan.hoVaTen}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-3 mt-1 text-base text-gray-400">
-                      {order.ngayNhan && (
-                        <span>
-                          Nhận: {format(parseISO(order.ngayNhan), "dd/MM/yyyy")}
+                    <div className="flex items-center justify-between gap-3 border-b border-b-gray-100 px-2 py-1 mb-1">
+                      <p className="text-gray-400 shrink-0">Nhận - Hẹn giao</p>
+                      <p className="text-right">
+                        {order.ngayNhan ? format(parseISO(order.ngayNhan), "HH:mm dd/MM") : "—"}
+                        {" - "}
+                        <span className={overdue ? "text-red-500 font-medium" : ""}>
+                          {format(date, "HH:mm dd/MM")}
                         </span>
-                      )}
-                      <span
-                        className={overdue ? "text-red-500 font-medium" : ""}
-                      >
-                        Hẹn giao: {format(date, "dd/MM/yyyy HH:mm")}
-                      </span>
-                    </div>
-                    {order.ghiChuChung && (
-                      <p className="text-base text-gray-400 mt-0.5 truncate">
-                        {order.ghiChuChung}
                       </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-b border-b-gray-100 px-2 py-1 mb-1">
+                      <p className="text-gray-400 shrink-0">Nha khoa</p>
+                      <p className="text-right">{nhaKhoa}</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-b border-b-gray-100 px-2 py-1 mb-1">
+                      <p className="text-gray-400 shrink-0">Bệnh nhân</p>
+                      <p className="text-right">{benhNhan}</p>
+                    </div>
+                    {sp && (
+                      <div className="flex items-center justify-between gap-3 border-b border-b-gray-100 px-2 py-1 mb-1">
+                        <p className="text-gray-400 shrink-0">Sản phẩm</p>
+                        <p className="text-right">{formatSingleSanPham(sp)}</p>
+                      </div>
+                    )}
+                    {order.ghiChuChung && (
+                      <div className="flex items-center justify-between gap-3 border-b border-b-gray-100 px-2 py-1 mb-1">
+                        <p className="text-gray-400 shrink-0">Ghi chú</p>
+                        <p className="text-right">{order.ghiChuChung}</p>
+                      </div>
                     )}
                   </div>
                 );
@@ -1418,6 +1407,15 @@ const TrangThaiBadge = ({ value }) => {
       {value || "Chờ xử lý"}
     </span>
   );
+};
+
+// Viền trên thẻ mobile: cùng màu với 3 nút lọc nhanh phía trên
+// Ưu tiên: Trễ (đỏ) → Đang thử (tím) → Giao hôm nay (xanh dương); còn lại viền xám
+const mobileTopBorder = (order, henGiaoDate, overdue) => {
+  if (overdue) return "border-t-4 border-red-600";
+  if (order.trangThai === "Đang thử") return "border-t-4 border-purple-700";
+  if (isToday(henGiaoDate) && order.trangThai !== "Hoàn thành") return "border-t-4 border-blue-700";
+  return "border-t-4 border-gray-200";
 };
 
 export default KeHoachGiaoHangTable;
