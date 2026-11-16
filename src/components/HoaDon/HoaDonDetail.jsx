@@ -389,7 +389,7 @@ const HoaDonDetail = () => {
         giamGiaPhanTram: 0,
         loaiGiamGia: "phanTram",
         tongCongSanPham: row.tongCong,
-        ghiChu: row.ghiChuTaiChinh || ""
+        ghiChu: [row.ghiChuMuaGium, row.ghiChuTaiChinh].map(s => (s || "").trim()).filter(Boolean).join(" - ")
       }));
 
     setHoaDon(prev => ({

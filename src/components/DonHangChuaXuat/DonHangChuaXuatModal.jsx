@@ -172,7 +172,9 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
     filteredDonHangs.forEach((order) => {
       (order.danhSachSanPham || []).forEach((sp, index) => {
         const spId = sp.sanPham?.toString();
-        const donGia = donGiaMap[spId] || 0;
+        // Mua giùm nha khoa: có đơn giá nhập tay trên dòng, ghi chú dòng = tên món hàng
+        const coDonGiaNhapTay = sp.donGia !== null && sp.donGia !== undefined;
+        const donGia = coDonGiaNhapTay ? Number(sp.donGia) : (donGiaMap[spId] || 0);
         const soLuong = sp.soLuong || 1;
         result.push({
           rowId: `${order._id}_${index}`,
@@ -185,6 +187,7 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
           sanPhamId: spId,
           sanPhamDonHangId: sp._id,
           ghiChu: sp.ghiChu,
+          ghiChuMuaGium: coDonGiaNhapTay ? (sp.ghiChu || "") : "",
           sanPham: mapTen[spId] || "SP",
           viTri: sp.viTri,
           loai: sp.loaiDon || "Mới",
