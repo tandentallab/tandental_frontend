@@ -81,9 +81,17 @@ const SearchInput = ({
   onAddNew,
   onOpen,
   loading = false,
+  // Tìm thêm ở nguồn ngoài (vd CRM) khi danh sách có sẵn không khớp:
+  // remoteSearch(term) -> Promise<[{ key, label, sub }]>, onPickRemote(item) -> Promise
+  remoteSearch,
+  onPickRemote,
+  remoteLabel = "Nguồn ngoài",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [remoteResults, setRemoteResults] = useState(null); // null = chưa tìm
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [pickingRemote, setPickingRemote] = useState(null);
   const wrapperRef = useRef(null);
 
   useEffect(() => {
@@ -115,6 +123,47 @@ const SearchInput = ({
       .toLowerCase()
       .includes((searchTerm || "").toLowerCase())
   );
+
+  // Chỉ tìm nguồn ngoài khi danh sách có sẵn đã tải xong mà không có kết quả
+  const remoteTerm = (searchTerm || "").trim();
+  const shouldSearchRemote =
+    Boolean(remoteSearch) && isOpen && !loading && filteredOptions.length === 0 && remoteTerm.length >= 2;
+
+  useEffect(() => {
+    if (!shouldSearchRemote) {
+      setRemoteResults(null);
+      setRemoteLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRemoteLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await remoteSearch(remoteTerm);
+        if (!cancelled) setRemoteResults(results || []);
+      } catch (err) {
+        if (!cancelled) setRemoteResults([]);
+      } finally {
+        if (!cancelled) setRemoteLoading(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldSearchRemote, remoteTerm]);
+
+  const pickRemote = async (item) => {
+    if (pickingRemote) return;
+    setPickingRemote(item.key);
+    try {
+      await onPickRemote(item);
+      setIsOpen(false);
+    } finally {
+      setPickingRemote(null);
+    }
+  };
 
   const avatarChar = searchTerm ? searchTerm.charAt(0).toUpperCase() : "?";
 
@@ -172,10 +221,41 @@ const SearchInput = ({
                   {opt.nameDisplay}
                 </div>
               ))
-            ) : (
+            ) : !remoteSearch || remoteTerm.length < 2 ? (
               <div className="px-3 py-2 text-base text-gray-500 italic">
                 Không tìm thấy kết quả
               </div>
+            ) : remoteLoading || remoteResults === null ? (
+              <div className="px-3 py-2 text-base text-gray-500 italic">
+                Không có sẵn, đang tìm bên {remoteLabel}...
+              </div>
+            ) : remoteResults.length === 0 ? (
+              <div className="px-3 py-2 text-base text-gray-500 italic">
+                Không tìm thấy, kể cả bên {remoteLabel}
+              </div>
+            ) : (
+              <>
+                <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase text-gray-400">
+                  Từ {remoteLabel} — chọn để thêm
+                </div>
+                {remoteResults.map((item) => (
+                  <div
+                    key={item.key}
+                    className={`px-3 py-2 text-base hover:bg-blue-50 cursor-pointer ${pickingRemote ? "opacity-60 pointer-events-none" : ""}`}
+                    onClick={() => pickRemote(item)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{item.label}</span>
+                      {pickingRemote === item.key ? (
+                        <span className="text-[11px] text-blue-500">Đang thêm...</span>
+                      ) : (
+                        <span className="text-[11px] text-blue-500 shrink-0">{remoteLabel}</span>
+                      )}
+                    </div>
+                    {item.sub && <div className="text-[12px] text-gray-400">{item.sub}</div>}
+                  </div>
+                ))}
+              </>
             )}
             {showAddNew && (
               <div
@@ -231,7 +311,6 @@ const DonHangForm = () => {
 
   // Quick-add modal states
   const [yeuCauThuModal, setYeuCauThuModal] = useState({ open: false, spIndex: null });
-  const [quickAddNhaKhoa, setQuickAddNhaKhoa] = useState({ open: false, loading: false, form: { hoVaTen: "", tenGiaoDich: "", soDienThoai: "", email: "", website: "", diaChiCuThe: "", tinh: "", moTa: "" } });
   const [quickAddBacSi, setQuickAddBacSi] = useState({ open: false, loading: false, form: { hoVaTen: "", email: "", soDienThoai: "", tieuDe: "", moTa: "" } });
   const [quickAddBenhNhan, setQuickAddBenhNhan] = useState({ open: false, loading: false, form: { hoVaTen: "", soHoSo: "", gioiTinh: "", tinh: "", quanHuyen: "" } });
 
@@ -351,6 +430,29 @@ const DonHangForm = () => {
       toast.error("Không thể tải danh sách nha khoa");
     } finally {
       setLoadingNhaKhoa(false);
+    }
+  };
+
+  // Nha khoa chỉ được thêm mới bên CRM: gõ tên không có sẵn thì tìm bên CRM,
+  // chọn thì lab tạo nha khoa từ thông tin CRM rồi gán vào đơn.
+  const timNhaKhoaBenCrm = async (term) => {
+    const res = await api.get("/nhakhoa/crm", { params: { q: term } });
+    return (res.data || []).map((kh) => ({
+      key: kh.crmId,
+      label: kh.ten,
+      sub: [kh.giaiDoan, kh.diaChi, kh.tinh, kh.soDienThoai].filter(Boolean).join(" · "),
+    }));
+  };
+
+  const chonNhaKhoaTuCrm = async (item) => {
+    try {
+      const res = await api.post("/nhakhoa/tu-crm", { crmId: item.key });
+      const nk = { ...res.data, nameDisplay: res.data.tenGiaoDich || res.data.hoVaTen };
+      setNhaKhoasList((prev) => mergeById(prev, [nk]));
+      setFormData((f) => ({ ...f, nhaKhoa: nk._id, bacSi: "", benhNhan: "" }));
+      toast.success(`Đã lấy nha khoa "${nk.nameDisplay}" từ CRM`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Không lấy được nha khoa từ CRM");
     }
   };
 
@@ -524,20 +626,6 @@ const DonHangForm = () => {
   };
 
   // ===== QUICK-ADD HANDLERS =====
-  const handleQuickAddNhaKhoa = async () => {
-    const { form } = quickAddNhaKhoa;
-    if (!form.hoVaTen && !form.tenGiaoDich) { toast.error("Vui lòng nhập tên nha khoa"); return; }
-    setQuickAddNhaKhoa(s => ({ ...s, loading: true }));
-    try {
-      const res = await api.post("/nhakhoa", form);
-      const newItem = { ...(res.data?.data || res.data), nameDisplay: (res.data?.data || res.data).tenGiaoDich || (res.data?.data || res.data).hoVaTen };
-      setNhaKhoasList(prev => [...prev, newItem]);
-      setFormData(f => ({ ...f, nhaKhoa: newItem._id, bacSi: "", benhNhan: "" }));
-      setQuickAddNhaKhoa({ open: false, loading: false, form: { hoVaTen: "", tenGiaoDich: "", soDienThoai: "", email: "", website: "", diaChiCuThe: "", tinh: "", moTa: "" } });
-      toast.success("Đã thêm nha khoa");
-    } catch (err) { toast.error(err.response?.data?.message || "Lỗi thêm nha khoa"); setQuickAddNhaKhoa(s => ({ ...s, loading: false })); }
-  };
-
   const handleQuickAddBacSi = async () => {
     const { form } = quickAddBacSi;
     if (!form.hoVaTen) { toast.error("Vui lòng nhập tên bác sĩ"); return; }
@@ -914,10 +1002,11 @@ const DonHangForm = () => {
                           benhNhan: "",
                         });
                       }}
-                      showAddNew={true}
-                      onAddNew={(term) => setQuickAddNhaKhoa(s => ({ ...s, open: true, form: { ...s.form, hoVaTen: term || "" } }))}
                       onOpen={fetchNhaKhoaData}
                       loading={loadingNhaKhoa}
+                      remoteSearch={timNhaKhoaBenCrm}
+                      onPickRemote={chonNhaKhoaTuCrm}
+                      remoteLabel="CRM"
                     />
                     <SearchInput
                       label="Bác sĩ"
@@ -1890,24 +1979,6 @@ const DonHangForm = () => {
           document.body
         );
       })()}
-
-      {/* Quick-add: Nha Khoa */}
-      <QuickAddModal
-        open={quickAddNhaKhoa.open}
-        onClose={() => setQuickAddNhaKhoa(s => ({ ...s, open: false }))}
-        title="+ Thêm Nha Khoa"
-        onSubmit={handleQuickAddNhaKhoa}
-        loading={quickAddNhaKhoa.loading}
-      >
-        <QuickAddField label="Tên nha khoa *" value={quickAddNhaKhoa.form.hoVaTen} placeholder="Tên nha khoa..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, hoVaTen: v } }))} />
-        <QuickAddField label="Tên giao dịch" value={quickAddNhaKhoa.form.tenGiaoDich} placeholder="Tên giao dịch..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, tenGiaoDich: v } }))} />
-        <QuickAddField label="Email" value={quickAddNhaKhoa.form.email} placeholder="Email..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, email: v } }))} />
-        <QuickAddField label="SĐT" value={quickAddNhaKhoa.form.soDienThoai} placeholder="Số điện thoại..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, soDienThoai: v } }))} />
-        <QuickAddField label="Website" value={quickAddNhaKhoa.form.website} placeholder="achau.com.vn..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, website: v } }))} />
-        <QuickAddField label="Địa chỉ cụ thể" value={quickAddNhaKhoa.form.diaChiCuThe} placeholder="Địa chỉ..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, diaChiCuThe: v } }))} />
-        <QuickAddField label="Tỉnh / Thành phố" value={quickAddNhaKhoa.form.tinh} placeholder="Hồ Chí Minh..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, tinh: v } }))} />
-        <QuickAddField label="Mô tả" type="textarea" value={quickAddNhaKhoa.form.moTa} placeholder="Mô tả..." onChange={v => setQuickAddNhaKhoa(s => ({ ...s, form: { ...s.form, moTa: v } }))} />
-      </QuickAddModal>
 
       {/* Quick-add: Bác Sĩ */}
       <QuickAddModal

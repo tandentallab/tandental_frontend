@@ -18,6 +18,10 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
 
   const { loading } = useSelector((state) => state.nhaKhoa);
 
+  // Nha khoa liên kết CRM: tên, SĐT, email, địa chỉ, tỉnh do CRM quản lý,
+  // phải sửa bên CRM (backend cũng bỏ qua các trường này).
+  const tuCrm = Boolean(data?.maCrm);
+
   const [form, setForm] = useState({
     hoVaTen: "",
     email: "",
@@ -117,6 +121,12 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
           </Typography>
         </Box>
 
+        {tuCrm && (
+          <Typography sx={{ mb: 2, fontSize: 14, color: "text.secondary" }}>
+            Tên, SĐT, email, địa chỉ và tỉnh do CRM quản lý — sửa bên CRM, lab sẽ tự cập nhật.
+          </Typography>
+        )}
+
         {/* FORM */}
         <Box
           sx={{
@@ -132,6 +142,7 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
             label="Tên"
             value={form.hoVaTen}
             onChange={(e) => handleChange("hoVaTen", e.target.value)}
+            disabled={tuCrm}
             fullWidth
           />
 
@@ -139,6 +150,7 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
             label="Email"
             value={form.email}
             onChange={(e) => handleChange("email", e.target.value)}
+            disabled={tuCrm}
             fullWidth
           />
 
@@ -146,6 +158,7 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
             label="SĐT"
             value={form.soDienThoai}
             onChange={(e) => handleChange("soDienThoai", e.target.value)}
+            disabled={tuCrm}
             fullWidth
           />
 
@@ -160,6 +173,7 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
             label="Địa chỉ cụ thể"
             value={form.diaChiCuThe}
             onChange={(e) => handleChange("diaChiCuThe", e.target.value)}
+            disabled={tuCrm}
             fullWidth
           />
 
@@ -169,7 +183,12 @@ export default function NhaKhoaUpdateModal({ open, setOpen, data }) {
             fullWidth
             value={form.tinh}
             onChange={(e) => handleChange("tinh", e.target.value)}
+            disabled={tuCrm}
           >
+            {/* Tỉnh lấy từ CRM có thể không nằm trong danh sách */}
+            {form.tinh && !vietnamProvinces.includes(form.tinh) && (
+              <MenuItem value={form.tinh}>{form.tinh}</MenuItem>
+            )}
             {vietnamProvinces.map((item) => (
               <MenuItem key={item} value={item}>
                 {item}

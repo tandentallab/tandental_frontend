@@ -10,7 +10,6 @@ import {
   NoteAdd,
 } from "@mui/icons-material";
 import NguoiLienHeModal from "../NguoiLienHe/NguoiLienHeModal";
-import NhaKhoaModal from "../NhaKhoa/NhaKhoaModal";
 import BenhNhanModal from "../BenhNhan/BenhNhanModal";
 import { useNavigate } from "react-router-dom";
 import PhieuThuModal from "../PhieuThu/PhieuThuModal";
@@ -62,7 +61,6 @@ const QuickAddMenu = () => {
 
           {/* menu */}
           <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl border z-20 overflow-hidden">
-            {hasRouteAccess(currentUser, "/nha-khoa") && <NhaKhoaModal isQuickMenu={true}></NhaKhoaModal>}
             {hasRouteAccess(currentUser, "/don-hang") && (
               <button
                 className="w-full flex items-center px-4 py-3 text-base text-gray-700 hover:bg-gray-100 border-b last:border-0"

@@ -18,20 +18,6 @@ export const fetchNhaKhoa = createAsyncThunk(
   }
 );
 
-export const createNhaKhoa = createAsyncThunk(
-  "nhaKhoa/create",
-  async (data, { rejectWithValue }) => {
-    try {
-      const res = await api.post("/nhakhoa", data);
-      return res.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Tạo thất bại"
-      );
-    }
-  }
-);
-
 /* ================= UPDATE ================= */
 export const updateNhaKhoa = createAsyncThunk(
   "nhaKhoa/update",
@@ -103,19 +89,6 @@ const nhaKhoaSlice = createSlice({
       })
 
       // TAO NHA KHOA
-      .addCase(createNhaKhoa.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(createNhaKhoa.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data.unshift(action.payload);
-        state.pagination.totalItems += 1; // Tự động tăng tổng số phần tử lên 1
-      })
-      .addCase(createNhaKhoa.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-
       /* ===== UPDATE ===== */
       .addCase(updateNhaKhoa.fulfilled, (state, action) => {
         const index = state.data.findIndex(

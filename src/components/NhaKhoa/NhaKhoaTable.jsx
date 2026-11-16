@@ -59,7 +59,6 @@ import DownloadIcon from "@mui/icons-material/Download";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchNhaKhoa, deleteNhaKhoa } from "../../redux/slices/nhaKhoaSlice";
-import NhaKhoaModal from "./NhaKhoaModal";
 import NhaKhoaUpdateModal from "./NhaKhoaUpdateModal";
 import NhaKhoaDetailModal from "./NhaKhoaDetailModal";
 
@@ -277,8 +276,6 @@ const FilterBar = React.memo(function FilterBar({
           <DownloadIcon sx={{ fontSize: 17 }} />
           <span className="hidden sm:inline">Xuất bảng giá</span>
         </button>
-
-        <NhaKhoaModal />
 
         <Tooltip title="Làm mới">
           <IconButton onClick={onRefresh}>
