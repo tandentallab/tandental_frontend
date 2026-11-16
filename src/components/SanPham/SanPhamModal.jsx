@@ -35,6 +35,7 @@ const INITIAL_FORM = {
   moTa: "",
   loai: "Sản xuất",
   coMauRang: true,
+  khongDongBoCrm: false,
   quyTrinh: [],
   baoHanhMacDinh: "0",
 };
@@ -208,6 +209,24 @@ export default function SanPhamModal({
                       label={
                         <span className="text-[13px] font-medium">
                           Có màu răng
+                        </span>
+                      }
+                    />
+                    <FormControlLabel
+                      className="m-0 mb-1"
+                      control={
+                        <Checkbox
+                          checked={form.khongDongBoCrm || false}
+                          onChange={(e) =>
+                            handleChange("khongDongBoCrm", e.target.checked)
+                          }
+                          color="warning"
+                          size="small"
+                        />
+                      }
+                      label={
+                        <span className="text-[13px] font-medium whitespace-nowrap">
+                          Không đồng bộ CRM
                         </span>
                       }
                     />
