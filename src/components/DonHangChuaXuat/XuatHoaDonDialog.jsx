@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography,
@@ -11,7 +11,7 @@ import { createHoaDon, deleteHoaDon } from "../../redux/slices/hoaDonSlice";
 import { fetchBangGiaByNhaKhoa } from "../../redux/slices/bangGiaSlice";
 import { fetchSanPham } from "../../redux/slices/sanPhamSlice";
 import TabBangGiaRieng from "../NhaKhoa/TabBangGiaRieng";
-import { datTenKhongTrung, taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
+import { chonThuMucLuu, datTenKhongTrung, laHuyChonThuMuc, taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
 
 const fmtVND = (v) => new Intl.NumberFormat("vi-VN").format(Math.round(v || 0));
 const thongBaoLoi = (err) => err?.message || err?.response?.data?.message || String(err || "Lỗi không xác định");
@@ -42,6 +42,7 @@ export default function XuatHoaDonDialog({ open, selectedOrders, tuNgay, denNgay
   const [tienDo, setTienDo] = useState({});
   const [ketQua, setKetQua] = useState([]);
   const [dangXoa, setDangXoa] = useState(null);
+  const thuMucRef = useRef(null); // thư mục đã chọn, dùng lại cho "Xuất lại PDF"
 
   // Mở lại hộp thoại thì bắt đầu lại từ đầu.
   useEffect(() => {
@@ -81,6 +82,16 @@ export default function XuatHoaDonDialog({ open, selectedOrders, tuNgay, denNgay
   };
 
   const handleXuat = async () => {
+    // Hỏi thư mục lưu 1 lần, trước khi tạo hóa đơn (Huỷ thì chưa tạo gì cả).
+    let thuMuc;
+    try {
+      thuMuc = await chonThuMucLuu();
+    } catch (err) {
+      if (laHuyChonThuMuc(err)) return;
+      thuMuc = null;
+    }
+    thuMucRef.current = thuMuc;
+
     const thang = new Date();
     const tenFiles = datTenKhongTrung(nhom.map((n) => tenFileHoaDon(n.ten, thang)));
 
@@ -100,7 +111,7 @@ export default function XuatHoaDonDialog({ open, selectedOrders, tuNgay, denNgay
         kq.hoaDon = res?.data || res;
 
         setTienDo((p) => ({ ...p, [n.id]: "Đang tạo PDF..." }));
-        await taiPdfHoaDon(kq.hoaDon._id, kq.tenFile);
+        kq.tenFile = await taiPdfHoaDon(kq.hoaDon._id, kq.tenFile, thuMuc);
         kq.daLuu = true;
         setTienDo((p) => ({ ...p, [n.id]: "Xong" }));
       } catch (err) {
@@ -120,8 +131,8 @@ export default function XuatHoaDonDialog({ open, selectedOrders, tuNgay, denNgay
 
   const xuatLai = async (kq) => {
     try {
-      await taiPdfHoaDon(kq.hoaDon._id, kq.tenFile);
-      setKetQua((list) => list.map((r) => (r.id === kq.id ? { ...r, daLuu: true, loi: "" } : r)));
+      const tenFile = await taiPdfHoaDon(kq.hoaDon._id, kq.tenFile, thuMucRef.current);
+      setKetQua((list) => list.map((r) => (r.id === kq.id ? { ...r, tenFile, daLuu: true, loi: "" } : r)));
       toast.success("Đã xuất PDF");
     } catch (err) {
       toast.error(`Xuất PDF thất bại: ${thongBaoLoi(err)}`);

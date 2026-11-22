@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../../config/api";
 import { deleteHoaDon } from "../../redux/slices/hoaDonSlice";
-import { datTenKhongTrung, taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
+import { chonThuMucLuu, datTenKhongTrung, laHuyChonThuMuc, taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
 
 const fmtVND = (v) => new Intl.NumberFormat("vi-VN").format(Math.round(v || 0));
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("vi-VN") : "-");
@@ -50,6 +50,15 @@ export default function HoaDonLuuTamDialog({ open, onClose, onDaThayDoi }) {
   const chonTatCa = () => setDaChon(daChon.length === danhSach.length ? [] : danhSach.map((hd) => hd._id));
 
   const xuatPdf = async () => {
+    // Hỏi thư mục lưu 1 lần cho tất cả file.
+    let thuMuc;
+    try {
+      thuMuc = await chonThuMucLuu();
+    } catch (err) {
+      if (laHuyChonThuMuc(err)) return;
+      thuMuc = null;
+    }
+
     const chon = danhSach.filter((hd) => daChon.includes(hd._id));
     const tenFiles = datTenKhongTrung(chon.map((hd) => tenFileHoaDon(hd.nhaKhoa?.hoVaTen, hd.createdAt)));
 
@@ -57,7 +66,7 @@ export default function HoaDonLuuTamDialog({ open, onClose, onDaThayDoi }) {
     const loiList = [];
     for (const [i, hd] of chon.entries()) {
       try {
-        await taiPdfHoaDon(hd._id, tenFiles[i]);
+        await taiPdfHoaDon(hd._id, tenFiles[i], thuMuc);
       } catch (err) {
         loiList.push(`${hd.soHoaDon}: ${thongBaoLoi(err)}`);
       }
