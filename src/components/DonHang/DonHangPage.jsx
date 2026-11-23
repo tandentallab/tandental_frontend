@@ -734,7 +734,7 @@ const DonHangPage = () => {
           }}
         >
           <div className="text-xl">{statusCounts?.["Đang sản xuất"] || 0}</div>
-          <div className="text-base">Đang SX</div>
+          <div className="text-base">Sản xuất</div>
         </div>
         <div
           className="flex-1 cursor-pointer bg-purple-500 hover:bg-purple-700 text-white px-2 transition-colors"
@@ -749,7 +749,7 @@ const DonHangPage = () => {
           }}
         >
           <div className="text-xl">{statusCounts?.["Đang thử"] || 0}</div>
-          <div className="text-base">Đang thử</div>
+          <div className="text-base">Thử</div>
         </div>
         <div
           className="flex-1 cursor-pointer bg-green-500 hover:bg-green-700 text-white px-2 transition-colors"
@@ -764,7 +764,7 @@ const DonHangPage = () => {
           }}
         >
           <div className="text-xl">{statusCounts?.["Hoàn thành"] || 0}</div>
-          <div className="text-base">Hoàn thành</div>
+          <div className="text-base">Xong</div>
         </div>
       </div>
 
