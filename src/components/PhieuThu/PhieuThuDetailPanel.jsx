@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import PhieuThuEditModal from "./PhieuThuEditModal";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseIcon from "@mui/icons-material/Close";
@@ -6,6 +6,7 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PrintIcon from "@mui/icons-material/Print";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@mui/material";
+import { api } from "../../config/api";
 
 const formatNumber = (v) => new Intl.NumberFormat("vi-VN").format(v || 0);
 
@@ -67,10 +68,33 @@ const InfoRow = ({ label, value, valueClass = "" }) => (
   </div>
 );
 
-export default function PhieuThuDetailPanel({ phieuThu, onClose, onUpdated }) {
+export default function PhieuThuDetailPanel({ phieuThu: summary, onClose, onUpdated }) {
   const navigate = useNavigate();
-  const isOpen = !!phieuThu;
+  const isOpen = !!summary;
   const [openEdit, setOpenEdit] = useState(false);
+
+  // Danh sách chỉ có dữ liệu tóm tắt — chi tiết (hóa đơn, liên hệ) tải khi mở panel
+  const [detail, setDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const summaryId = summary?._id;
+
+  useEffect(() => {
+    if (!summaryId) return;
+    let cancelled = false;
+    setLoadingDetail(true);
+    setDetailError("");
+    api.get(`/phieu-thu/${summaryId}`)
+      .then((res) => { if (!cancelled) setDetail(res.data?.data || null); })
+      .catch((err) => {
+        if (!cancelled) setDetailError(err?.response?.data?.message || "Không tải được chi tiết phiếu thu");
+      })
+      .finally(() => { if (!cancelled) setLoadingDetail(false); });
+    return () => { cancelled = true; };
+  }, [summaryId]);
+
+  const detailReady = !!detail && detail._id === summaryId;
+  const phieuThu = summary && detailReady ? { ...summary, ...detail } : summary;
 
   const nk = phieuThu?.nhaKhoaInfo || {};
   const ngt = phieuThu?.nguoiTaoInfo || {};
@@ -108,8 +132,9 @@ export default function PhieuThuDetailPanel({ phieuThu, onClose, onUpdated }) {
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setOpenEdit(true)}
-              title="Chỉnh sửa"
-              className="p-1.5 rounded-full hover:bg-white/20 transition"
+              disabled={!detailReady}
+              title={detailReady ? "Chỉnh sửa" : "Đang tải chi tiết..."}
+              className="p-1.5 rounded-full hover:bg-white/20 transition disabled:opacity-50 disabled:cursor-wait"
             >
               <EditOutlinedIcon sx={{ fontSize: 20 }} />
             </button>
@@ -208,7 +233,12 @@ export default function PhieuThuDetailPanel({ phieuThu, onClose, onUpdated }) {
               </div>
 
               {/* ── Card 3: Hóa đơn ── */}
-              {danhSachHoaDon.length > 0 && (
+              {!detailReady && (
+                <div className="bg-white rounded-2xl shadow-sm px-4 py-6 text-center text-base text-gray-400">
+                  {detailError || (loadingDetail ? "Đang tải hóa đơn..." : "")}
+                </div>
+              )}
+              {detailReady && danhSachHoaDon.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
                   <p className="font-semibold text-gray-800 text-base mb-3">
                     Hóa đơn {danhSachHoaDon.length > 1 ? `(${danhSachHoaDon.length})` : ""}
@@ -304,7 +334,7 @@ export default function PhieuThuDetailPanel({ phieuThu, onClose, onUpdated }) {
         </div>
       </div>
 
-      {openEdit && phieuThu && (
+      {openEdit && detailReady && (
         <PhieuThuEditModal
           phieuThu={phieuThu}
           open={openEdit}

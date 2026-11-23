@@ -79,6 +79,8 @@ const phieuThuSlice = createSlice({
         pagination: { total: 0, totalPages: 1, currentPage: 1 },
         hoaDonChuaThanhToan: [],
         loading: false,
+        loadingMore: false,
+        latestListRequestId: null,
         loadingHoaDon: false,
         error: null,
         phieuThuTheoHoaDon: [],
@@ -90,13 +92,27 @@ const phieuThuSlice = createSlice({
     extraReducers: (builder) => {
         builder
             // fetchAll
-            .addCase(fetchAllPhieuThu.pending, (state) => {
-                state.loading = true;
+            .addCase(fetchAllPhieuThu.pending, (state, action) => {
+                // page > 1 = cuộn tải thêm: giữ nguyên danh sách hiện tại
+                const isMore = (action.meta.arg?.page || 1) > 1;
+                state.latestListRequestId = action.meta.requestId;
+                if (isMore) state.loadingMore = true;
+                else state.loading = true;
                 state.error = null;
             })
             .addCase(fetchAllPhieuThu.fulfilled, (state, action) => {
+                // Bỏ qua response cũ nếu bộ lọc đã đổi trong lúc chờ
+                if (action.meta.requestId !== state.latestListRequestId) return;
                 state.loading = false;
-                state.danhSach = action.payload.data || [];
+                state.loadingMore = false;
+                const rows = action.payload.data || [];
+                const isMore = (action.meta.arg?.page || 1) > 1;
+                if (isMore) {
+                    const seen = new Set(state.danhSach.map((pt) => pt._id));
+                    state.danhSach.push(...rows.filter((pt) => !seen.has(pt._id)));
+                } else {
+                    state.danhSach = rows;
+                }
                 state.pagination = {
                     total: action.payload.total || 0,
                     totalPages: action.payload.totalPages || 1,
@@ -104,7 +120,9 @@ const phieuThuSlice = createSlice({
                 };
             })
             .addCase(fetchAllPhieuThu.rejected, (state, action) => {
+                if (action.meta.requestId !== state.latestListRequestId) return;
                 state.loading = false;
+                state.loadingMore = false;
                 state.error = action.error.message;
             })
 

@@ -66,10 +66,10 @@ const EMPTY_DATE = { preset: null, customFrom: "", customTo: "" };
 
 export default function PhieuThuPage() {
     const dispatch = useDispatch();
-    const { danhSach, pagination, loading } = useSelector((s) => s.phieuThu);
+    const { danhSach, pagination, loading, loadingMore } = useSelector((s) => s.phieuThu);
     const nhaKhoaList = useSelector((s) => s.nhaKhoa.data) ?? [];
 
-    const [page, setPage] = useState(1);
+    const [reloadKey, setReloadKey] = useState(0); // tăng để buộc tải lại từ trang 1
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
@@ -133,7 +133,7 @@ export default function PhieuThuPage() {
     }, [dispatch]);
 
     useEffect(() => {
-        const t = setTimeout(() => { setDebouncedSearch(searchTerm); setPage(1); }, 500);
+        const t = setTimeout(() => { setDebouncedSearch(searchTerm); }, 500);
         return () => clearTimeout(t);
     }, [searchTerm]);
 
@@ -181,27 +181,49 @@ export default function PhieuThuPage() {
         return { dateFrom: f ? f.toISOString() : "", dateTo: t ? t.toISOString() : "" };
     }, []);
 
-    const loadData = useCallback(() => {
+    // page = 1 thay thế danh sách; page > 1 nối thêm vào cuối (xem phieuThuSlice)
+    const loadPage = useCallback((pageToLoad) => {
         const { dateFrom, dateTo } = getApiDates(appliedNgayThu.preset, appliedNgayThu.customFrom, appliedNgayThu.customTo);
         dispatch(fetchAllPhieuThu({
-            page, limit: ROWS_PER_PAGE, search: debouncedSearch,
+            page: pageToLoad, limit: ROWS_PER_PAGE, search: debouncedSearch,
             nhaKhoaId: appliedNhaKhoa?._id || "",
             dateFrom, dateTo,
         }));
-    }, [dispatch, page, debouncedSearch, appliedNgayThu, appliedNhaKhoa, getApiDates]);
+    }, [dispatch, debouncedSearch, appliedNgayThu, appliedNhaKhoa, getApiDates]);
 
-    useEffect(() => { loadData(); }, [loadData]);
+    // Đổi bộ lọc / tìm kiếm / làm mới → tải lại từ trang 1
+    useEffect(() => { loadPage(1); }, [loadPage, reloadKey]);
+
+    // Sau khi tạo/sửa: tải lại từ đầu danh sách
+    const reloadFromStart = useCallback(() => loadPage(1), [loadPage]);
+
+    // LAZY LOADING: cuộn tới cuối danh sách thì tải thêm trang kế tiếp
+    const hasMore = pagination.currentPage < (pagination.totalPages || 1);
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el || loading || loadingMore || !hasMore) return;
+        // Tạo lại observer mỗi khi danh sách dài thêm để nếu phần cuối vẫn còn
+        // trong màn hình (màn hình cao) thì tiếp tục tải.
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) loadPage(pagination.currentPage + 1);
+            },
+            { rootMargin: "300px 0px" }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [loading, loadingMore, hasMore, pagination.currentPage, danhSach.length, loadPage]);
 
     const handleRefresh = () => {
         setSearchTerm(""); setDebouncedSearch("");
         setAppliedNgayThu(EMPTY_DATE); setAppliedNhaKhoa(null);
-        setPage(1);
+        setReloadKey((k) => k + 1);
     };
 
     const handleApplyFilters = () => {
         setAppliedNgayThu(draftNgayThu);
         setAppliedNhaKhoa(draftNhaKhoa);
-        setPage(1);
         setOpenDateModal(null);
         setOpenPickerModal(null);
         setShowFilter(false);
@@ -215,7 +237,7 @@ export default function PhieuThuPage() {
 
     const handlePanelUpdated = (updated) => {
         if (updated) setSelectedPhieuThu((prev) => prev ? { ...prev, ...updated } : prev);
-        loadData();
+        reloadFromStart();
     };
 
     // 🔥 XỬ LÝ XUẤT EXCEL
@@ -278,7 +300,6 @@ export default function PhieuThuPage() {
         return DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
     };
     const isFiltered = !!appliedNgayThu.preset || !!appliedNhaKhoa;
-    const totalPages = pagination.totalPages || 1;
 
     // Bấm "Ngày thu" → mở lịch ngay; chọn xong là lọc luôn
     const renderDatePicker = (cf, scf) => (
@@ -301,7 +322,6 @@ export default function PhieuThuPage() {
 
                     setAppliedNgayThu(newNgayThu);
                     setAppliedNhaKhoa(draftNhaKhoa);
-                    setPage(1);
                     setOpenDateModal(null);
                     setOpenPickerModal(null);
                     setShowFilter(false);
@@ -451,7 +471,7 @@ export default function PhieuThuPage() {
                                 <CalendarTodayIcon sx={{ fontSize: 11 }} />
                                 {getDateLabel(appliedNgayThu)}
                                 <button
-                                    onClick={() => { setAppliedNgayThu(EMPTY_DATE); setPage(1); }}
+                                    onClick={() => { setAppliedNgayThu(EMPTY_DATE); }}
                                     className="ml-0.5 hover:text-blue-900 flex items-center"
                                 >
                                     <CloseIcon sx={{ fontSize: 12 }} />
@@ -463,7 +483,7 @@ export default function PhieuThuPage() {
                                 <StoreIcon sx={{ fontSize: 11 }} />
                                 {appliedNhaKhoa.name}
                                 <button
-                                    onClick={() => { setAppliedNhaKhoa(null); setPage(1); }}
+                                    onClick={() => { setAppliedNhaKhoa(null); }}
                                     className="ml-0.5 hover:text-blue-900 flex items-center"
                                 >
                                     <CloseIcon sx={{ fontSize: 12 }} />
@@ -557,19 +577,15 @@ export default function PhieuThuPage() {
                         </tbody>
                     </table>
                 </div>
-                <div className="bg-gray-50 border-t p-3 flex justify-between items-center text-base text-gray-600">
-                    <span>Tổng: {pagination.total || 0} phiếu thu</span>
-                    <div className="flex items-center gap-2">
-                        <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-                            className="px-2 py-1 border rounded text-base hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">← Trước</button>
-                        <span className="text-base">Trang {page} / {totalPages}</span>
-                        <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-                            className="px-2 py-1 border rounded text-base hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">Sau →</button>
-                    </div>
+                <div ref={sentinelRef} className="bg-gray-50 border-t p-3 flex justify-between items-center text-base text-gray-600">
+                    <span>Đã hiển thị {danhSach.length} / {pagination.total || 0} phiếu thu</span>
+                    <span className="text-gray-400">
+                        {loadingMore ? "Đang tải thêm..." : hasMore ? "Cuộn xuống để xem thêm" : danhSach.length > 0 ? "Đã hết dữ liệu" : ""}
+                    </span>
                 </div>
             </div>
 
-            <PhieuThuModal open={openModal} onClose={() => setOpenModal(false)} onSuccess={loadData} />
+            <PhieuThuModal open={openModal} onClose={() => setOpenModal(false)} onSuccess={reloadFromStart} />
 
             <PhieuThuDetailPanel
                 phieuThu={selectedPhieuThu}
