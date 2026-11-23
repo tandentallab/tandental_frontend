@@ -5,6 +5,7 @@ import { api } from "../../config/api";
 import { toast } from "sonner";
 import WarrantyCardPrint from "./WarrantyCardPrint";
 import { NHOM_MUA_GIUM } from "../../data/sanPhamConfig";
+import DateField from "../common/dateRange/DateField";
 
 const generateQRCode = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -570,17 +571,14 @@ const PhieuBaoHanhModal = ({ open, onClose, donHang, warranty, onSuccess }) => {
                       <label className="block text-base font-bold text-slate-600 mb-1.5">
                         Chọn ngày tùy chỉnh cụ thể:
                       </label>
-                      <TextField
-                        type="date"
+                      <DateField
+                        mode="single"
                         value={config.customEndDate || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
+                        onChange={(val) => {
                           handleConfigChange(idx, "customEndDate", val);
                           handleConfigChange(idx, "selectedYears", "");
                         }}
-                        fullWidth
-                        size="small"
-                        InputProps={{ className: "rounded-lg text-base bg-white" }}
+                        placeholder="Chọn ngày hết hạn"
                       />
                     </div>
                   </div>

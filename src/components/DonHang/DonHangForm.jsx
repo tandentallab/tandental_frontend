@@ -1073,6 +1073,7 @@ const DonHangForm = () => {
                           : "--/--/----"}
                       </button>
                       <CustomDateRangePicker
+                        mode="single"
                         open={Boolean(ngayNhanAnchor)}
                         anchorEl={ngayNhanAnchor}
                         onClose={() => setNgayNhanAnchor(null)}
@@ -1104,6 +1105,7 @@ const DonHangForm = () => {
                           : "--/--/----"}
                       </button>
                       <CustomDateRangePicker
+                        mode="single"
                         open={Boolean(yeuCauHoanThanhAnchor)}
                         anchorEl={yeuCauHoanThanhAnchor}
                         onClose={() => setYeuCauHoanThanhAnchor(null)}
@@ -1136,6 +1138,7 @@ const DonHangForm = () => {
                           : "--/--/----"}
                       </button>
                       <CustomDateRangePicker
+                        mode="single"
                         open={Boolean(henGiaoAnchor)}
                         anchorEl={henGiaoAnchor}
                         onClose={() => setHenGiaoAnchor(null)}

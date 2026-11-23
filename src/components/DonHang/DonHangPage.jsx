@@ -671,77 +671,36 @@ const DonHangPage = () => {
     appliedBenhNhan ||
     appliedTrangThai.length > 0
   );
-  const getDateLabel = (f) =>
-    DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+  const getDateLabel = (f) => {
+    if (f.preset === "custom") {
+      if (f.customFrom && f.customTo)
+        return `${dayjs(f.customFrom).format("DD/MM/YYYY")} → ${dayjs(f.customTo).format("DD/MM/YYYY")}`;
+      if (f.customFrom) return `Từ ${dayjs(f.customFrom).format("DD/MM/YYYY")}`;
+    }
+    return DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+  };
 
-  const renderDateDropdown = (cf, scf, dateKey) => (
-    <div className="absolute left-5 top-full z-[100] w-[80%] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-      {DATE_PRESETS.map((p) => (
-        <div key={p.key}>
-          <button
-            onClick={() => {
-              scf((prev) => ({
-                ...prev,
-                preset: prev.preset === p.key ? null : p.key,
-              }));
-              if (!p.isCalendar) setOpenDateModal(null);
-            }}
-            className={`w-full text-left px-4 py-2.5 text-base flex items-center gap-2 border-b border-gray-100 transition ${cf.preset === p.key
-              ? "bg-blue-50 text-blue-700 font-semibold"
-              : "text-gray-700 hover:bg-gray-50"
-              }`}
-          >
-            {p.isCalendar && <CalendarTodayIcon sx={{ fontSize: 14 }} />}
-            {p.label}
-          </button>
-          {p.isCalendar && cf.preset === "custom" && (
-            <div
-              className="px-4 py-3 bg-blue-50/30 border-b border-gray-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const el = e.currentTarget;
-                  setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: el }));
-                }}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-blue-200 bg-white text-base text-gray-700 hover:bg-blue-50 transition"
-              >
-                <span>
-                  {cf.customFrom && cf.customTo
-                    ? `${dayjs(cf.customFrom).format("DD/MM/YYYY")} – ${dayjs(
-                      cf.customTo
-                    ).format("DD/MM/YYYY")}`
-                    : cf.customFrom
-                      ? `Từ ${dayjs(cf.customFrom).format("DD/MM/YYYY")}`
-                      : "Chọn khoảng ngày..."}
-                </span>
-                <CalendarTodayIcon sx={{ fontSize: 13 }} />
-              </button>
-              <CustomDateRangePicker
-                open={Boolean(datePickerAnchor[dateKey])}
-                anchorEl={datePickerAnchor[dateKey]}
-                onClose={() =>
-                  setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: null }))
-                }
-                initialDates={{
-                  start: cf.customFrom || "",
-                  end: cf.customTo || "",
-                }}
-                onApply={(dates) => {
-                  scf((prev) => ({
-                    ...prev,
-                    customFrom: dates.start,
-                    customTo: dates.end,
-                  }));
-                  setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: null }));
-                }}
-              />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
+  // Bấm trường ngày trong bộ lọc → mở lịch chọn khoảng ngày ngay
+  const renderDatePicker = (cf, scf, dateKey) => (
+    <CustomDateRangePicker
+      open={Boolean(datePickerAnchor[dateKey])}
+      anchorEl={datePickerAnchor[dateKey]}
+      onClose={() =>
+        setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: null }))
+      }
+      initialDates={{
+        start: cf.preset === "custom" ? cf.customFrom || "" : "",
+        end: cf.preset === "custom" ? cf.customTo || "" : "",
+      }}
+      onApply={(dates) => {
+        scf(
+          dates.start
+            ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+            : EMPTY_DATE
+        );
+        setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: null }));
+      }}
+    />
   );
 
   return (
@@ -843,11 +802,11 @@ const DonHangPage = () => {
               >
                 <button
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                  onClick={() => {
+                  onClick={(e) => {
                     setOpenPickerModal(null);
-                    setOpenDateModal(
-                      openDateModal === "ngayNhan" ? null : "ngayNhan"
-                    );
+                    setOpenDateModal(null);
+                    const el = e.currentTarget;
+                    setDatePickerAnchor((prev) => ({ ...prev, ngayNhan: el }));
                   }}
                 >
                   <span
@@ -863,12 +822,7 @@ const DonHangPage = () => {
                   </span>
                   <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                 </button>
-                {openDateModal === "ngayNhan" &&
-                  renderDateDropdown(
-                    draftNgayNhan,
-                    setDraftNgayNhan,
-                    "ngayNhan"
-                  )}
+                {renderDatePicker(draftNgayNhan, setDraftNgayNhan, "ngayNhan")}
               </div>
               {/* Y/c hoàn thành */}
               <div
@@ -877,11 +831,11 @@ const DonHangPage = () => {
               >
                 <button
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                  onClick={() => {
+                  onClick={(e) => {
                     setOpenPickerModal(null);
-                    setOpenDateModal(
-                      openDateModal === "ycHoanThanh" ? null : "ycHoanThanh"
-                    );
+                    setOpenDateModal(null);
+                    const el = e.currentTarget;
+                    setDatePickerAnchor((prev) => ({ ...prev, ycHoanThanh: el }));
                   }}
                 >
                   <span
@@ -897,12 +851,7 @@ const DonHangPage = () => {
                   </span>
                   <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                 </button>
-                {openDateModal === "ycHoanThanh" &&
-                  renderDateDropdown(
-                    draftYcHoanThanh,
-                    setDraftYcHoanThanh,
-                    "ycHoanThanh"
-                  )}
+                {renderDatePicker(draftYcHoanThanh, setDraftYcHoanThanh, "ycHoanThanh")}
               </div>
               {/* Hẹn giao */}
               <div
@@ -911,11 +860,11 @@ const DonHangPage = () => {
               >
                 <button
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                  onClick={() => {
+                  onClick={(e) => {
                     setOpenPickerModal(null);
-                    setOpenDateModal(
-                      openDateModal === "henGiao" ? null : "henGiao"
-                    );
+                    setOpenDateModal(null);
+                    const el = e.currentTarget;
+                    setDatePickerAnchor((prev) => ({ ...prev, henGiao: el }));
                   }}
                 >
                   <span
@@ -931,8 +880,7 @@ const DonHangPage = () => {
                   </span>
                   <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                 </button>
-                {openDateModal === "henGiao" &&
-                  renderDateDropdown(draftHenGiao, setDraftHenGiao, "henGiao")}
+                {renderDatePicker(draftHenGiao, setDraftHenGiao, "henGiao")}
               </div>
               {/* Nha khoa */}
               <div
@@ -1212,12 +1160,6 @@ const DonHangPage = () => {
           {appliedNgayNhan.preset && (
             <span className="px-2 py-1 flex items-center gap-2 bg-slate-200 text-gray-800 text-base rounded-full">
               Ngày nhận: {getDateLabel(appliedNgayNhan)}
-              {appliedNgayNhan.preset === "custom" &&
-                appliedNgayNhan.customFrom &&
-                ` ${appliedNgayNhan.customFrom}`}
-              {appliedNgayNhan.preset === "custom" &&
-                appliedNgayNhan.customTo &&
-                ` → ${appliedNgayNhan.customTo}`}
               <button
                 onClick={() => {
                   dispatch(
@@ -1236,12 +1178,6 @@ const DonHangPage = () => {
           {appliedYcHoanThanh.preset && (
             <span className="px-2 py-1 flex items-center gap-2 bg-slate-200 text-gray-800 text-base rounded-full">
               Y/c hoàn thành: {getDateLabel(appliedYcHoanThanh)}
-              {appliedYcHoanThanh.preset === "custom" &&
-                appliedYcHoanThanh.customFrom &&
-                ` ${appliedYcHoanThanh.customFrom}`}
-              {appliedYcHoanThanh.preset === "custom" &&
-                appliedYcHoanThanh.customTo &&
-                ` → ${appliedYcHoanThanh.customTo}`}
               <button
                 onClick={() => {
                   dispatch(
@@ -1260,12 +1196,6 @@ const DonHangPage = () => {
           {appliedHenGiao.preset && (
             <span className="px-2 py-1 flex items-center gap-2 bg-slate-200 text-gray-800 text-base rounded-full">
               Hẹn giao: {getDateLabel(appliedHenGiao)}
-              {appliedHenGiao.preset === "custom" &&
-                appliedHenGiao.customFrom &&
-                ` ${appliedHenGiao.customFrom}`}
-              {appliedHenGiao.preset === "custom" &&
-                appliedHenGiao.customTo &&
-                ` → ${appliedHenGiao.customTo}`}
               <button
                 onClick={() => {
                   dispatch(

@@ -357,8 +357,14 @@ const KeHoachGiaoHangTable = () => {
     );
   };
 
-  const getDateLabel = (f) =>
-    DATE_PRESETS.find((p) => p.key === f?.preset)?.label || "";
+  const getDateLabel = (f) => {
+    if (f?.preset === "custom" && f.customFrom) {
+      return f.customTo
+        ? `${dayjs(f.customFrom).format("DD/MM/YYYY")} → ${dayjs(f.customTo).format("DD/MM/YYYY")}`
+        : `Từ ${dayjs(f.customFrom).format("DD/MM/YYYY")}`;
+    }
+    return DATE_PRESETS.find((p) => p.key === f?.preset)?.label || "";
+  };
 
   const isFiltered = !!(
     appliedHenGiao?.preset ||
@@ -367,58 +373,9 @@ const KeHoachGiaoHangTable = () => {
     appliedTrangThai.length > 0
   );
 
-  const renderDateDropdown = (cf, scf, filterKey) => (
-    <div className="absolute left-5 top-full z-[100] w-[80%] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-      {DATE_PRESETS.map((p) => (
-        <div key={p.key}>
-          <button
-            onClick={(e) => {
-              scf((prev) => ({
-                ...prev,
-                preset: prev.preset === p.key ? null : p.key,
-              }));
-
-              if (!p.isCalendar) {
-                setOpenDateModal(null);
-              } else {
-                if (cf.preset !== p.key) {
-                  setActiveDateType(filterKey);
-                  setAnchorElCustomDate(e.currentTarget);
-                }
-              }
-            }}
-            className={`w-full text-left px-4 py-2.5 text-base flex items-center gap-2 border-b border-gray-100 transition ${cf.preset === p.key
-              ? "bg-blue-50 text-blue-700 font-semibold"
-              : "text-gray-700 hover:bg-gray-50"
-              }`}
-          >
-            {p.isCalendar && <CalendarTodayIcon sx={{ fontSize: 14 }} />}
-            {p.label}
-          </button>
-
-          {p.isCalendar && cf.preset === "custom" && (
-            <div
-              className="px-4 py-3 bg-blue-50/30 border-b border-gray-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={(e) => {
-                  setActiveDateType(filterKey);
-                  setAnchorElCustomDate(e.currentTarget);
-                }}
-                className="w-full h-9 px-2 flex items-center justify-center gap-2 text-base font-semibold text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
-              >
-                {cf.customFrom && cf.customTo
-                  ? `${dayjs(cf.customFrom).format("DD/MM/YYYY")} - ${dayjs(
-                    cf.customTo
-                  ).format("DD/MM/YYYY")}`
-                  : "📅 Bấm để chọn ngày..."}
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
-
+  // Bấm trường ngày → mở lịch ngay; chọn xong là lọc luôn
+  const renderDatePicker = (cf, scf, filterKey) => (
+    <>
       {activeDateType === filterKey && (
         <CustomDateRangePicker
           open={Boolean(anchorElCustomDate)}
@@ -428,15 +385,13 @@ const KeHoachGiaoHangTable = () => {
             setActiveDateType(null);
           }}
           initialDates={{
-            start: cf.customFrom,
-            end: cf.customTo,
+            start: cf.preset === "custom" ? cf.customFrom : "",
+            end: cf.preset === "custom" ? cf.customTo : "",
           }}
           onApply={(dates) => {
-            const newNgay = {
-              preset: "custom",
-              customFrom: dates.start,
-              customTo: dates.end,
-            };
+            const newNgay = dates.start
+              ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+              : { preset: null, customFrom: "", customTo: "" };
 
             setAnchorElCustomDate(null);
             setActiveDateType(null);
@@ -459,7 +414,7 @@ const KeHoachGiaoHangTable = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 
   const formatViTri = (viTriArr) => {
@@ -717,11 +672,11 @@ const KeHoachGiaoHangTable = () => {
                   >
                     <button
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                      onClick={() => {
+                      onClick={(e) => {
                         setOpenPickerModal(null);
-                        setOpenDateModal(
-                          openDateModal === "henGiao" ? null : "henGiao"
-                        );
+                        setOpenDateModal(null);
+                        setActiveDateType("henGiao");
+                        setAnchorElCustomDate(e.currentTarget);
                       }}
                     >
                       <span
@@ -739,12 +694,7 @@ const KeHoachGiaoHangTable = () => {
                         sx={{ fontSize: 16, color: "#9ca3af" }}
                       />
                     </button>
-                    {openDateModal === "henGiao" &&
-                      renderDateDropdown(
-                        draftHenGiao,
-                        setDraftHenGiao,
-                        "henGiao"
-                      )}
+                    {renderDatePicker(draftHenGiao, setDraftHenGiao, "henGiao")}
                   </div>
 
                   <div
@@ -753,11 +703,11 @@ const KeHoachGiaoHangTable = () => {
                   >
                     <button
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                      onClick={() => {
+                      onClick={(e) => {
                         setOpenPickerModal(null);
-                        setOpenDateModal(
-                          openDateModal === "ngayNhan" ? null : "ngayNhan"
-                        );
+                        setOpenDateModal(null);
+                        setActiveDateType("ngayNhan");
+                        setAnchorElCustomDate(e.currentTarget);
                       }}
                     >
                       <span
@@ -775,12 +725,7 @@ const KeHoachGiaoHangTable = () => {
                         sx={{ fontSize: 16, color: "#9ca3af" }}
                       />
                     </button>
-                    {openDateModal === "ngayNhan" &&
-                      renderDateDropdown(
-                        draftNgayNhan,
-                        setDraftNgayNhan,
-                        "ngayNhan"
-                      )}
+                    {renderDatePicker(draftNgayNhan, setDraftNgayNhan, "ngayNhan")}
                   </div>
 
                   <div
@@ -915,12 +860,6 @@ const KeHoachGiaoHangTable = () => {
                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
                   <CalendarTodayIcon sx={{ fontSize: 11 }} />
                   Hẹn giao: {getDateLabel(appliedHenGiao)}
-                  {appliedHenGiao.preset === "custom" &&
-                    appliedHenGiao.customFrom &&
-                    ` ${dayjs(appliedHenGiao.customFrom).format("DD/MM/YYYY")}`}
-                  {appliedHenGiao.preset === "custom" &&
-                    appliedHenGiao.customTo &&
-                    ` → ${dayjs(appliedHenGiao.customTo).format("DD/MM/YYYY")}`}
                   <button
                     onClick={() => {
                       dispatch(
@@ -940,12 +879,6 @@ const KeHoachGiaoHangTable = () => {
                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
                   <CalendarTodayIcon sx={{ fontSize: 11 }} />
                   Nhận: {getDateLabel(appliedNgayNhan)}
-                  {appliedNgayNhan.preset === "custom" &&
-                    appliedNgayNhan.customFrom &&
-                    ` ${dayjs(appliedNgayNhan.customFrom).format("DD/MM/YYYY")}`}
-                  {appliedNgayNhan.preset === "custom" &&
-                    appliedNgayNhan.customTo &&
-                    ` → ${dayjs(appliedNgayNhan.customTo).format("DD/MM/YYYY")}`}
                   <button
                     onClick={() => {
                       dispatch(

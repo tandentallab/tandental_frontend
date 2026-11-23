@@ -1,0 +1,235 @@
+/* Lịch chọn ngày dùng chung toàn hệ thống (khoảng ngày / 1 ngày) */
+.rcal {
+  --rcal-primary: #2563eb;
+  --rcal-primary-light: #dbeafe;
+  --rcal-text: #1e293b;
+  --rcal-muted: #64748b;
+  --rcal-border: #e2e8f0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  padding: 16px;
+  background: #fff;
+  color: var(--rcal-text);
+  font-family: inherit;
+  user-select: none;
+  box-sizing: border-box;
+}
+.rcal *, .rcal *::before { box-sizing: border-box; }
+
+.rcal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.rcal-month {
+  font-weight: 700;
+  font-size: 15px;
+}
+.rcal-nav {
+  border: none;
+  background: #f1f5f9;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rcal-text);
+  transition: background 0.15s;
+  flex: 0 0 auto;
+  padding: 0;
+}
+.rcal-nav:hover { background: #e2e8f0; }
+
+.rcal-status {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.rcal-pill {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--rcal-muted);
+  border: 1px solid var(--rcal-border);
+}
+.rcal-pill.filled {
+  background: var(--rcal-primary-light);
+  color: var(--rcal-primary);
+  border-color: var(--rcal-primary);
+  font-weight: 600;
+}
+.rcal-pill .lbl {
+  display: block;
+  font-size: 11px;
+  opacity: 0.75;
+  margin-bottom: 2px;
+  font-weight: 400;
+}
+
+.rcal-weekdays,
+.rcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.rcal-weekdays {
+  text-align: center;
+  font-size: 12px;
+  color: var(--rcal-muted);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.rcal-grid { row-gap: 4px; }
+
+.rcal-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+}
+.rcal-day {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--rcal-text);
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+  padding: 0;
+  font-family: inherit;
+}
+.rcal-day:not(:disabled):hover { background: #f1f5f9; }
+.rcal-day:disabled { color: #cbd5e1; cursor: not-allowed; }
+.rcal-day.today { box-shadow: inset 0 0 0 1.5px var(--rcal-primary); }
+.rcal-day.selected {
+  background: var(--rcal-primary) !important;
+  color: #fff;
+}
+/* Ngày nằm giữa khoảng: nền liền mạch do dải .in-range-bg của ô vẽ */
+.rcal-day.in-range { color: #1d4ed8; }
+.rcal-cell.in-range-bg::before {
+  content: "";
+  position: absolute;
+  inset: 2px 0;
+  background: var(--rcal-primary-light);
+  z-index: 1;
+}
+.rcal-cell.edge-start.in-range-bg::before {
+  left: 50%;
+  border-radius: 20px 0 0 20px;
+}
+.rcal-cell.edge-end.in-range-bg::before {
+  right: 50%;
+  border-radius: 0 20px 20px 0;
+}
+.rcal-cell.edge-start.edge-end.in-range-bg::before { display: none; }
+
+.rcal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rcal-border);
+  gap: 8px;
+}
+.rcal-hint {
+  font-size: 12px;
+  color: var(--rcal-muted);
+}
+.rcal-reset {
+  border: none;
+  background: none;
+  color: var(--rcal-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.rcal-reset:hover { background: var(--rcal-primary-light); }
+
+@media (max-width: 420px) {
+  .rcal { width: calc(100vw - 16px); }
+  .rcal-day { width: 30px; height: 30px; font-size: 13px; }
+  .rcal-cell { height: 34px; }
+}
+
+/* Ô nhập hiển thị khoảng ngày (DateField) */
+.rcal-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.rcal-input:hover { border-color: #94a3b8; }
+.rcal-input.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+.rcal-input.disabled {
+  cursor: not-allowed;
+  background: #f8fafc;
+  opacity: 0.7;
+}
+.rcal-input.standard {
+  border: none;
+  border-bottom: 1px solid #d1d5db;
+  border-radius: 0;
+  padding: 4px 0;
+  min-height: 0;
+  box-shadow: none;
+}
+.rcal-input.standard.active { border-bottom-color: #2563eb; box-shadow: none; }
+.rcal-input svg { flex: 0 0 auto; color: #64748b; }
+.rcal-input-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rcal-input-text.placeholder { color: #94a3b8; }
+.rcal-clear {
+  border: none;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.rcal-clear:hover { background: #f1f5f9; color: #1e293b; }
+.rcal-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+}

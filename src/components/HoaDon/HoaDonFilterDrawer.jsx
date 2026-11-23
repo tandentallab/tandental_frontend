@@ -56,78 +56,40 @@ const HoaDonFilterDrawer = ({
         .map((nk) => ({ _id: nk._id, name: nk.tenGiaoDich || nk.hoVaTen || "" }))
         .filter((nk) => !nhaKhoaSearch.trim() || nk.name.toLowerCase().includes(nhaKhoaSearch.toLowerCase()));
 
-    const getDateLabel = (f) => DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+    const getDateLabel = (f) => {
+        if (f.preset === "custom" && f.customFrom) {
+            return f.customTo
+                ? `${dayjs(f.customFrom).format("DD/MM/YYYY")} → ${dayjs(f.customTo).format("DD/MM/YYYY")}`
+                : `Từ ${dayjs(f.customFrom).format("DD/MM/YYYY")}`;
+        }
+        return DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+    };
 
     const toggleTrangThai = (status) =>
         setDraftTrangThai((prev) =>
             prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
         );
 
-    const renderDateDropdown = () => (
-        <div className="absolute left-2 top-full z-[100] w-[90%] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-            {DATE_PRESETS.map((p) => (
-                <div key={p.key}>
-                    <button
-                        onClick={(e) => {
-                            setDraftNgayXuat((prev) => ({ ...prev, preset: prev.preset === p.key ? null : p.key }));
-
-                            if (!p.isCalendar) {
-                                setOpenDateModal(null);
-                            } else {
-                                if (draftNgayXuat.preset !== p.key) {
-                                    setAnchorElCustomDate(e.currentTarget);
-                                }
-                            }
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-base flex items-center gap-2 border-b border-gray-100 transition ${draftNgayXuat.preset === p.key ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
-                    >
-                        {p.isCalendar && <CalendarTodayIcon sx={{ fontSize: 14 }} />}
-                        {p.label}
-                    </button>
-
-                    {p.isCalendar && draftNgayXuat.preset === "custom" && (
-                        <div className="px-4 py-3 bg-blue-50/30 border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={(e) => setAnchorElCustomDate(e.currentTarget)}
-                                className="w-full h-9 px-2 flex items-center justify-center gap-2 text-base font-semibold text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
-                            >
-                                {draftNgayXuat.customFrom && draftNgayXuat.customTo
-                                    ? `${dayjs(draftNgayXuat.customFrom).format('DD/MM/YYYY')} - ${dayjs(draftNgayXuat.customTo).format('DD/MM/YYYY')}`
-                                    : "📅 Bấm để chọn ngày..."}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            ))}
-
-            {/* POP-UP LỊCH */}
-            <CustomDateRangePicker
-                open={Boolean(anchorElCustomDate)}
-                anchorEl={anchorElCustomDate}
-                onClose={() => setAnchorElCustomDate(null)}
-                initialDates={{
-                    start: draftNgayXuat.customFrom,
-                    end: draftNgayXuat.customTo,
-                }}
-                onApply={(dates) => {
-                    const newNgayXuat = {
-                        preset: "custom",
-                        customFrom: dates.start,
-                        customTo: dates.end,
-                    };
-
-                    // 1. Dọn dẹp UI: Xóa mỏ neo để tắt lịch
-                    setAnchorElCustomDate(null);
-                    setDraftNgayXuat(newNgayXuat); // Update state phụ đề phòng
-
-                    // 🔥 2. BÙM! GỌI LỌC NGAY VÀ LUÔN KHÔNG CẦN BẤM LƯU 🔥
-                    onApply(newNgayXuat, draftNhaKhoa, draftTrangThai);
-
-                    // 3. Đóng sạch sẽ toàn bộ menu lọc
-                    onClose();
-                }}
-            />
-        </div>
+    // Bấm "Ngày xuất" → mở lịch ngay; chọn xong là lọc luôn
+    const renderDatePicker = () => (
+        <CustomDateRangePicker
+            open={Boolean(anchorElCustomDate)}
+            anchorEl={anchorElCustomDate}
+            onClose={() => setAnchorElCustomDate(null)}
+            initialDates={{
+                start: draftNgayXuat.preset === "custom" ? draftNgayXuat.customFrom : "",
+                end: draftNgayXuat.preset === "custom" ? draftNgayXuat.customTo : "",
+            }}
+            onApply={(dates) => {
+                const newNgayXuat = dates.start
+                    ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                    : EMPTY_DATE;
+                setAnchorElCustomDate(null);
+                setDraftNgayXuat(newNgayXuat);
+                onApply(newNgayXuat, draftNhaKhoa, draftTrangThai);
+                onClose();
+            }}
+        />
     );
 
     return (
@@ -139,14 +101,14 @@ const HoaDonFilterDrawer = ({
             <div className="relative border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
                 <button
                     className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                    onClick={() => { setOpenPickerModal(null); setOpenDateModal(openDateModal === "ngayXuat" ? null : "ngayXuat"); }}
+                    onClick={(e) => { setOpenPickerModal(null); setOpenDateModal(null); setAnchorElCustomDate(e.currentTarget); }}
                 >
                     <span className={draftNgayXuat.preset ? "text-blue-600 font-medium" : "text-gray-600"}>
                         {draftNgayXuat.preset ? getDateLabel(draftNgayXuat) : "Ngày xuất"}
                     </span>
                     <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                 </button>
-                {openDateModal === "ngayXuat" && renderDateDropdown()}
+                {renderDatePicker()}
             </div>
 
             {/* Nha khoa */}

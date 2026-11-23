@@ -10,9 +10,7 @@ import HoaDonDetailTable from "./HoaDonDetailTable";
 import PhieuThuModal from "../PhieuThu/PhieuThuModal";
 import { toast } from "sonner";
 import dayjs from "dayjs";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import DateField from "../common/dateRange/DateField";
 import DonHangChuaXuatModal from "../DonHangChuaXuat/DonHangChuaXuatModal";
 import { taiPdfHoaDon, tenFileHoaDon } from "../../utils/hoaDonPdf";
 
@@ -679,28 +677,17 @@ const HoaDonDetail = () => {
           </p>
           <p className="text-base text-gray-400 font-medium mt-4">Ngày xuất</p>
           <div className="flex items-center mt-0.5 mb-4">
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                disabled={isLocked}
-                format="DD/MM/YYYY"
-                minDate={minNgayXuatStr ? dayjs(minNgayXuatStr) : undefined}
-                maxDate={dayjs()}
-                value={formState.ngayXuatHoaDon ? dayjs(formState.ngayXuatHoaDon) : null}
-                onChange={(val) => {
-                  handleNgayXuatChange({ target: { value: val ? val.format("YYYY-MM-DD") : "" } });
-                }}
-                slotProps={{
-                  textField: {
-                    variant: "standard",
-                    sx: {
-                      width: 144,
-                      "& input": { fontSize: "0.875rem", color: "#1f2937" },
-                      "& .MuiInput-underline:before": { borderBottomColor: "#d1d5db" }
-                    }
-                  }
-                }}
-              />
-            </LocalizationProvider>
+            <DateField
+              mode="single"
+              variant="standard"
+              clearable={false}
+              disabled={isLocked}
+              minDate={minNgayXuatStr || undefined}
+              maxDate={dayjs().format("YYYY-MM-DD")}
+              value={formState.ngayXuatHoaDon || ""}
+              onChange={(val) => handleNgayXuatChange({ target: { value: val } })}
+              style={{ width: 160 }}
+            />
           </div>
         </div>
 
@@ -779,28 +766,17 @@ const HoaDonDetail = () => {
           <div className="flex flex-col gap-1">
             <p className="text-base text-gray-400 font-medium">Ngày xuất</p>
             <div className="flex items-center">
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  disabled={isLocked}
-                  format="DD/MM/YYYY"
-                  minDate={minNgayXuatStr ? dayjs(minNgayXuatStr) : undefined}
-                  maxDate={dayjs()}
-                  value={formState.ngayXuatHoaDon ? dayjs(formState.ngayXuatHoaDon) : null}
-                  onChange={(val) => {
-                    handleNgayXuatChange({ target: { value: val ? val.format("YYYY-MM-DD") : "" } });
-                  }}
-                  slotProps={{
-                    textField: {
-                      variant: "standard",
-                      sx: {
-                        width: 144,
-                        "& input": { fontSize: "0.875rem", color: "#1f2937" },
-                        "& .MuiInput-underline:before": { borderBottomColor: "#d1d5db" }
-                      }
-                    }
-                  }}
-                />
-              </LocalizationProvider>
+              <DateField
+                mode="single"
+                variant="standard"
+                clearable={false}
+                disabled={isLocked}
+                minDate={minNgayXuatStr || undefined}
+                maxDate={dayjs().format("YYYY-MM-DD")}
+                value={formState.ngayXuatHoaDon || ""}
+                onChange={(val) => handleNgayXuatChange({ target: { value: val } })}
+                style={{ width: 160 }}
+              />
             </div>
           </div>
         </div>

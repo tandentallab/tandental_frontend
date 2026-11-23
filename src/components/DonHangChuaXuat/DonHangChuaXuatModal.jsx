@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Checkbox, Typography,
-  CircularProgress, Button, MenuItem, Select, FormControl, InputLabel, IconButton,
+  CircularProgress, Button, IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -62,15 +62,15 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
   const { donHangs = [], loading } = useSelector((state) => state.hoaDon) || {};
   const { data: bangGia = [] } = useSelector((state) => state.bangGia) || {};
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [dateFilter, setDateFilter] = useState("thisMonth");
+  // "custom" = khoảng ngày chọn trên lịch (mặc định tháng này), "all" = tất cả thời gian
+  const [dateFilter, setDateFilter] = useState("custom");
   const [searchMaDon, setSearchMaDon] = useState("");
   const [visibleCount, setVisibleCount] = useState(25);
   const containerRef = useRef(null);
   const sentinelRef = useRef(null);
 
-  const today = new Date().toISOString().split("T")[0];
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
+  const [fromDate, setFromDate] = useState(() => dayjs().startOf("month").format("YYYY-MM-DD"));
+  const [toDate, setToDate] = useState(() => dayjs().endOf("month").format("YYYY-MM-DD"));
 
   // 🔥 STATE NEO LỊCH
   const [anchorElCustomDate, setAnchorElCustomDate] = useState(null);
@@ -249,48 +249,37 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
       <DialogContent sx={{ p: 0, display: "flex", flexCol: "column", height: "100%", overflow: "hidden" }}>
         <div className="flex-1 flex flex-col min-h-0 w-full relative bg-white">
           <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white">
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Lọc ngày</InputLabel>
-              <Select value={dateFilter} label="Lọc ngày" onChange={(e) => setDateFilter(e.target.value)}>
-                <MenuItem value="all">Tất cả thời gian</MenuItem>
-                <MenuItem value="custom">Chọn khoảng ngày</MenuItem>
-                <MenuItem value="today">Hôm nay</MenuItem>
-                <MenuItem value="yesterday">Hôm qua</MenuItem>
-                <MenuItem value="thisWeek">Tuần này</MenuItem>
-                <MenuItem value="lastWeek">Tuần trước</MenuItem>
-                <MenuItem value="thisMonth">Tháng này</MenuItem>
-                <MenuItem value="lastMonth">Tháng trước</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* 🔥 THAY ĐỔI Ở ĐÂY: GỌI LỊCH CUSTOM THAY VÌ DATEPICKER MUI */}
-            {dateFilter === "custom" && (
-              <div className="flex items-center gap-2 relative">
-                <button
-                  onClick={(e) => setAnchorElCustomDate(e.currentTarget)}
-                  className="h-10 px-3 flex items-center justify-center gap-2 text-base font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm min-w-[220px]"
-                >
-                  <CalendarTodayIcon sx={{ fontSize: 18 }} />
-                  {fromDate && toDate
-                    ? `${dayjs(fromDate).format('DD/MM/YYYY')} - ${dayjs(toDate).format('DD/MM/YYYY')}`
-                    : "Chọn khoảng ngày..."}
-                </button>
-                <CustomDateRangePicker
-                  open={Boolean(anchorElCustomDate)}
-                  anchorEl={anchorElCustomDate}
-                  onClose={() => setAnchorElCustomDate(null)}
-                  initialDates={{
-                    start: fromDate,
-                    end: toDate,
-                  }}
-                  onApply={(dates) => {
+            {/* Lọc ngày: bấm là mở lịch ngay. "Đặt lại" trên lịch = tất cả thời gian */}
+            <div className="flex items-center gap-2 relative">
+              <button
+                onClick={(e) => setAnchorElCustomDate(e.currentTarget)}
+                className="h-10 px-3 flex items-center justify-center gap-2 text-base font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm min-w-[220px]"
+              >
+                <CalendarTodayIcon sx={{ fontSize: 18 }} />
+                {dateFilter === "custom" && fromDate && toDate
+                  ? `${dayjs(fromDate).format('DD/MM/YYYY')} - ${dayjs(toDate).format('DD/MM/YYYY')}`
+                  : "Tất cả thời gian"}
+              </button>
+              <CustomDateRangePicker
+                open={Boolean(anchorElCustomDate)}
+                anchorEl={anchorElCustomDate}
+                onClose={() => setAnchorElCustomDate(null)}
+                initialDates={{
+                  start: dateFilter === "custom" ? fromDate : "",
+                  end: dateFilter === "custom" ? toDate : "",
+                }}
+                onApply={(dates) => {
+                  if (dates.start) {
+                    setDateFilter("custom");
                     setFromDate(dates.start);
-                    setToDate(dates.end);
-                    setAnchorElCustomDate(null);
-                  }}
-                />
-              </div>
-            )}
+                    setToDate(dates.end || dates.start);
+                  } else {
+                    setDateFilter("all");
+                  }
+                  setAnchorElCustomDate(null);
+                }}
+              />
+            </div>
 
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 focus-within:border-blue-400 focus-within:bg-white transition-all min-w-[200px]">
               <input type="text" placeholder="Tìm mã đơn..." value={searchMaDon} onChange={(e) => setSearchMaDon(e.target.value)} className="flex-1 text-base bg-transparent outline-none text-gray-700" />

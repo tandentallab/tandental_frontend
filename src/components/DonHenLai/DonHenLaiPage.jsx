@@ -524,16 +524,6 @@ const DonHenLaiPage = () => {
                   <div className="min-[900px]:hidden border-b border-gray-100 px-3 py-2.5">
                     <p className="text-base text-gray-400 mb-1.5">Ngày hẹn</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {DATE_PRESETS.filter((p) => !p.isCalendar).map((p) => (
-                        <button
-                          key={p.key}
-                          onClick={() => setDraftDate(makePresetDate(p.key))}
-                          className={`px-2.5 py-1 rounded-full border text-base font-medium transition-all ${draftDate.preset === p.key ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                            }`}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
                       <button
                         onClick={(e) => setAnchorDraftCal(e.currentTarget)}
                         className={`px-2.5 py-1 rounded-full border text-base font-medium transition-all inline-flex items-center gap-1 ${draftDate.preset === "custom" ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -544,7 +534,7 @@ const DonHenLaiPage = () => {
                           ? draftDate.from === draftDate.to
                             ? dayjs(draftDate.from).format("DD/MM/YYYY")
                             : `${dayjs(draftDate.from).format("DD/MM")} - ${dayjs(draftDate.to).format("DD/MM")}`
-                          : "Chọn trên lịch"}
+                          : "Chọn ngày hẹn"}
                       </button>
                     </div>
                     <CustomDateRangePicker
@@ -694,18 +684,6 @@ const DonHenLaiPage = () => {
             }}
           />
 
-          {DATE_PRESETS.filter((p) => !p.isCalendar).map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setDateFilter(makePresetDate(p.key))}
-              className={`hidden min-[900px]:inline-block px-2.5 py-1 rounded-full border text-sm font-medium transition ${dateFilter.preset === p.key
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                }`}
-            >
-              {p.label}
-            </button>
-          ))}
 
           {nhaKhoa && (
             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">

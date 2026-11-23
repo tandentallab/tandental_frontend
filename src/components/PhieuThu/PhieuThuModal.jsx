@@ -10,9 +10,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import dayjs from "dayjs";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import DateTimeField from "../common/dateRange/DateTimeField";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CheckIcon from "@mui/icons-material/Check";
 
@@ -567,67 +565,14 @@ export default function PhieuThuModal({ open, onClose, onSuccess, initialNhaKhoa
 
               <div>
                 <p className="text-base text-gray-400 mb-0.5">Ngày thu</p>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateTimePicker
-                    format="DD/MM/YYYY HH:mm"
-                    ampm={false}
-                    value={ngayThu ? dayjs(ngayThu) : null}
-                    minDateTime={minNgayThuStr ? dayjs(minNgayThuStr) : undefined}
-                    maxDateTime={dayjs()}
-                    onChange={(val) => setNgayThu(val ? val.format("YYYY-MM-DDTHH:mm") : "")}
-                    slotProps={{
-                      textField: {
-                        variant: "standard",
-                        fullWidth: true,
-                        sx: {
-                          "& input": {
-                            fontSize: "0.875rem",
-                            color: "#1f2937",
-                            py: "4px",
-                          },
-                          "& .MuiInput-underline:before": {
-                            borderBottom: "2px solid #e5e7eb",
-                          },
-                          "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
-                            borderBottom: "2px solid #e5e7eb",
-                          },
-                          "& .MuiInput-underline:after": {
-                            borderBottom: "2px solid #29b6f6",
-                          }
-                        }
-                      },
-                      popper: {
-                        placement: "bottom-end",
-                        sx: {
-                          zIndex: 99999,
-                          "& .MuiPaper-root": {
-                            transform: "scale(0.75) !important",
-                            transformOrigin: "top right !important",
-                          }
-                        }
-                      },
-                      dialog: {
-                        sx: {
-                          zIndex: 99999,
-                          "& .MuiPaper-root": {
-                            transform: "scale(0.75) !important",
-                          }
-                        }
-                      },
-                      desktopPaper: {
-                        sx: {
-                          transform: "scale(0.75) !important",
-                          transformOrigin: "top right !important",
-                        }
-                      },
-                      mobilePaper: {
-                        sx: {
-                          transform: "scale(0.75) !important",
-                        }
-                      }
-                    }}
-                  />
-                </LocalizationProvider>
+                <DateTimeField
+                  variant="standard"
+                  value={ngayThu || ""}
+                  onChange={setNgayThu}
+                  minDateTime={minNgayThuStr || undefined}
+                  maxDateTime={dayjs().format("YYYY-MM-DDTHH:mm")}
+                  clearable={false}
+                />
               </div>
 
               <div ref={thangDropdownRef} className="relative">

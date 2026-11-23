@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import DateTimeField from "../common/dateRange/DateTimeField";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -172,37 +173,11 @@ export default function TabChamSocKhachHang({ nhaKhoaData }) {
             />
           </Grid>
           <Grid item xs={12} md={5}>
-            <TextField
-              fullWidth
-              size="small"
-              type="datetime-local"
+            <DateTimeField
               label="Hẹn chăm sóc tiếp"
+              defaultTime="08:00"
               value={form.nextCareDate}
-              onChange={(e) =>
-                setForm({ ...form, nextCareDate: e.target.value })
-              }
-              InputLabelProps={{
-                shrink: true,
-              }}
-              sx={{
-                "& input::-webkit-calendar-picker-indicator": {
-                  cursor: "pointer",
-                },
-
-                // Đảm bảo label luôn ở trên cao khi có giá trị hoặc type là date
-
-                "& .MuiInputLabel-root": {
-                  transform: "translate(14px, -9px) scale(0.75)",
-
-                  bgcolor: "white",
-
-                  px: 0.5,
-                },
-
-                "& .MuiInputLabel-shrink": {
-                  transform: "translate(14px, -9px) scale(0.75)",
-                },
-              }}
+              onChange={(v) => setForm({ ...form, nextCareDate: v })}
             />
           </Grid>
           <Grid item xs={12}>

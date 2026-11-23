@@ -100,7 +100,6 @@ export default function PhieuThuPage() {
     const exportNhaKhoaRef = useRef(null);
 
     // STATES CHO DROPDOWN NGÀY (MODAL XUẤT)
-    const [openExportDateDropdown, setOpenExportDateDropdown] = useState(false);
     const [exportDateAnchorEl, setExportDateAnchorEl] = useState(null);
     const exportDateRef = useRef(null);
 
@@ -155,9 +154,6 @@ export default function PhieuThuPage() {
         const handleClickOutsideDropdown = (event) => {
             if (exportNhaKhoaRef.current && !exportNhaKhoaRef.current.contains(event.target)) {
                 setOpenExportNhaKhoaDropdown(false);
-            }
-            if (exportDateRef.current && !exportDateRef.current.contains(event.target)) {
-                setOpenExportDateDropdown(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutsideDropdown);
@@ -273,59 +269,32 @@ export default function PhieuThuPage() {
         .map((nk) => ({ _id: nk._id, name: nk.tenGiaoDich || nk.hoVaTen || "" }))
         .filter((nk) => !exportNhaKhoaSearch.trim() || nk.name.toLowerCase().includes(exportNhaKhoaSearch.toLowerCase()));
 
-    const getDateLabel = (f) => DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+    const getDateLabel = (f) => {
+        if (f.preset === "custom" && f.customFrom) {
+            return f.customTo
+                ? `${dayjs(f.customFrom).format('DD/MM/YYYY')} → ${dayjs(f.customTo).format('DD/MM/YYYY')}`
+                : `Từ ${dayjs(f.customFrom).format('DD/MM/YYYY')}`;
+        }
+        return DATE_PRESETS.find((p) => p.key === f.preset)?.label || "";
+    };
     const isFiltered = !!appliedNgayThu.preset || !!appliedNhaKhoa;
     const totalPages = pagination.totalPages || 1;
 
-    const renderDateDropdown = (cf, scf) => (
-        <div className="absolute left-2 top-full z-[100] w-[90%] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-            {DATE_PRESETS.map((p) => (
-                <div key={p.key}>
-                    <button
-                        onClick={(e) => {
-                            scf((prev) => ({ ...prev, preset: prev.preset === p.key ? null : p.key }));
-                            if (!p.isCalendar) {
-                                setOpenDateModal(null);
-                            } else {
-                                if (cf.preset !== p.key) {
-                                    setAnchorElCustomDate(e.currentTarget);
-                                }
-                            }
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-base flex items-center gap-2 border-b border-gray-100 transition ${cf.preset === p.key ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
-                    >
-                        {p.isCalendar && <CalendarTodayIcon sx={{ fontSize: 14 }} />}
-                        {p.label}
-                    </button>
-                    {p.isCalendar && cf.preset === "custom" && (
-                        <div className="px-4 py-3 bg-blue-50/30 border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={(e) => setAnchorElCustomDate(e.currentTarget)}
-                                className="w-full h-9 px-2 flex items-center justify-center gap-2 text-base font-semibold text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
-                            >
-                                {cf.customFrom && cf.customTo
-                                    ? `${dayjs(cf.customFrom).format('DD/MM/YYYY')} - ${dayjs(cf.customTo).format('DD/MM/YYYY')}`
-                                    : "📅 Bấm để chọn ngày..."}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            ))}
-
+    // Bấm "Ngày thu" → mở lịch ngay; chọn xong là lọc luôn
+    const renderDatePicker = (cf, scf) => (
+        <>
             <CustomDateRangePicker
                 open={Boolean(anchorElCustomDate)}
                 anchorEl={anchorElCustomDate}
                 onClose={() => setAnchorElCustomDate(null)}
                 initialDates={{
-                    start: cf.customFrom,
-                    end: cf.customTo,
+                    start: cf.preset === "custom" ? cf.customFrom : "",
+                    end: cf.preset === "custom" ? cf.customTo : "",
                 }}
                 onApply={(dates) => {
-                    const newNgayThu = {
-                        preset: "custom",
-                        customFrom: dates.start,
-                        customTo: dates.end,
-                    };
+                    const newNgayThu = dates.start
+                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                        : EMPTY_DATE;
 
                     setAnchorElCustomDate(null);
                     scf(newNgayThu);
@@ -338,7 +307,7 @@ export default function PhieuThuPage() {
                     setShowFilter(false);
                 }}
             />
-        </div>
+        </>
     );
 
     return (
@@ -364,14 +333,14 @@ export default function PhieuThuPage() {
                                     <div className="relative border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
                                         <button
                                             className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-base"
-                                            onClick={() => { setOpenPickerModal(null); setOpenDateModal(openDateModal === "ngayThu" ? null : "ngayThu"); }}
+                                            onClick={(e) => { setOpenPickerModal(null); setOpenDateModal(null); setAnchorElCustomDate(e.currentTarget); }}
                                         >
                                             <span className={draftNgayThu.preset ? "text-blue-600 font-medium" : "text-gray-600"}>
                                                 {draftNgayThu.preset ? getDateLabel(draftNgayThu) : "Ngày thu"}
                                             </span>
                                             <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                                         </button>
-                                        {openDateModal === "ngayThu" && renderDateDropdown(draftNgayThu, setDraftNgayThu)}
+                                        {renderDatePicker(draftNgayThu, setDraftNgayThu)}
                                     </div>
 
                                     {/* Nha khoa */}
@@ -481,8 +450,6 @@ export default function PhieuThuPage() {
                             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-base font-medium px-2.5 py-1 rounded-full">
                                 <CalendarTodayIcon sx={{ fontSize: 11 }} />
                                 {getDateLabel(appliedNgayThu)}
-                                {appliedNgayThu.preset === "custom" && appliedNgayThu.customFrom && ` ${dayjs(appliedNgayThu.customFrom).format('DD/MM/YYYY')}`}
-                                {appliedNgayThu.preset === "custom" && appliedNgayThu.customTo && ` → ${dayjs(appliedNgayThu.customTo).format('DD/MM/YYYY')}`}
                                 <button
                                     onClick={() => { setAppliedNgayThu(EMPTY_DATE); setPage(1); }}
                                     className="ml-0.5 hover:text-blue-900 flex items-center"
@@ -640,7 +607,7 @@ export default function PhieuThuPage() {
                                         <button
                                             type="button"
                                             className="w-full flex items-center justify-between border-b border-gray-300 bg-transparent py-2 hover:bg-gray-50 transition text-base text-left shadow-none"
-                                            onClick={() => setOpenExportDateDropdown(!openExportDateDropdown)}
+                                            onClick={() => setExportDateAnchorEl(exportDateRef.current)}
                                         >
                                             <span className={exportDateFilter?.preset ? "text-blue-700 font-medium truncate" : "text-gray-900"}>
                                                 {exportDateFilter?.preset === "custom" && exportDateFilter.customFrom
@@ -650,60 +617,21 @@ export default function PhieuThuPage() {
                                             <CalendarTodayIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                                         </button>
 
-                                        {openExportDateDropdown && (
-                                            <div className="absolute left-0 top-full mt-1 z-[1300] w-full bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-                                                {DATE_PRESETS.map((p) => (
-                                                    <div key={p.key}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setExportDateFilter(prev => ({ ...prev, preset: p.key }));
-                                                                if (!p.isCalendar) {
-                                                                    setOpenExportDateDropdown(false);
-                                                                } else {
-                                                                    setExportDateAnchorEl(exportDateRef.current);
-                                                                }
-                                                            }}
-                                                            className={`w-full text-left px-4 py-2.5 text-base flex items-center gap-2 border-b border-gray-100 transition ${exportDateFilter?.preset === p.key ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
-                                                        >
-                                                            {p.isCalendar && <CalendarTodayIcon sx={{ fontSize: 14 }} />}
-                                                            {p.label}
-                                                        </button>
-
-                                                        {p.isCalendar && exportDateFilter?.preset === "custom" && (
-                                                            <div className="px-4 py-3 bg-blue-50/30 border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setExportDateAnchorEl(exportDateRef.current)}
-                                                                    className="w-full h-9 px-2 flex items-center justify-center gap-2 text-base font-semibold text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
-                                                                >
-                                                                    {exportDateFilter.customFrom && exportDateFilter.customTo
-                                                                        ? `${dayjs(exportDateFilter.customFrom).format('DD/MM/YYYY')} - ${dayjs(exportDateFilter.customTo).format('DD/MM/YYYY')}`
-                                                                        : "📅 Bấm để chọn ngày..."}
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
                                         <CustomDateRangePicker
                                             open={Boolean(exportDateAnchorEl)}
                                             anchorEl={exportDateAnchorEl}
                                             onClose={() => setExportDateAnchorEl(null)}
                                             initialDates={{
-                                                start: exportDateFilter?.customFrom || "",
-                                                end: exportDateFilter?.customTo || "",
+                                                start: exportDateFilter?.preset === "custom" ? exportDateFilter.customFrom || "" : "",
+                                                end: exportDateFilter?.preset === "custom" ? exportDateFilter.customTo || "" : "",
                                             }}
                                             onApply={(dates) => {
-                                                setExportDateFilter({
-                                                    preset: "custom",
-                                                    customFrom: dates.start,
-                                                    customTo: dates.end,
-                                                });
+                                                setExportDateFilter(
+                                                    dates.start
+                                                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                                                        : EMPTY_DATE
+                                                );
                                                 setExportDateAnchorEl(null);
-                                                setOpenExportDateDropdown(false);
                                             }}
                                         />
                                     </div>
