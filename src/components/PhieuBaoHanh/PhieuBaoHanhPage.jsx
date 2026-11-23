@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Button,
   TextField,
   Table,
   TableBody,
@@ -10,11 +9,9 @@ import {
   TableRow,
   Paper,
   IconButton,
-  Chip,
   MenuItem,
   InputAdornment,
   Tooltip,
-  TablePagination,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -34,6 +31,8 @@ import PhieuBaoHanhModal from "../DonHang/PhieuBaoHanhModal";
 
 // Helper functions (Giữ nguyên logic gốc)
 
+const PAGE_SIZE = 30;
+
 const formatDateVN = (dateValue) => {
   if (!dateValue) return "---";
   return new Date(dateValue).toLocaleDateString("vi-VN");
@@ -45,9 +44,15 @@ const PhieuBaoHanhPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // Lazy loading: tải từng trang PAGE_SIZE phiếu, cuộn tới cuối thì tải tiếp
+  const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const requestIdRef = useRef(0);
+  const sentinelDesktopRef = useRef(null);
+  const sentinelMobileRef = useRef(null);
+  const hasMore = phieuList.length < totalCount;
 
   const [nhaKhoaFilter, setNhaKhoaFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
@@ -66,7 +71,6 @@ const PhieuBaoHanhPage = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setPage(0); // Reset trang khi search
     }, 500);
     return () => clearTimeout(handler);
   }, [searchTerm]);
@@ -76,47 +80,73 @@ const PhieuBaoHanhPage = () => {
     dispatch(fetchNhaKhoa());
   }, [dispatch]);
 
-  useEffect(() => {
-    loadPhieuList();
-  }, [page, rowsPerPage, debouncedSearch, nhaKhoaFilter, dateFilter]);
-
-  const loadPhieuList = async () => {
-    try {
-      setLoading(true);
-      const dateRange = toISODateRange(dateFilter);
-
-      const res = await api.get("/phieu-bao-hanh", {
-        params: {
-          page: page + 1,
-          limit: rowsPerPage,
-          search: debouncedSearch,
-          nhaKhoaId: nhaKhoaFilter,
-          fromDate: dateRange.fromISO,
-          toDate: dateRange.toISO,
+  // Tải 1 trang: trang 1 thay toàn bộ danh sách, trang sau nối thêm vào cuối.
+  // requestId để bỏ kết quả cũ khi bộ lọc đổi giữa chừng.
+  const loadPage = useCallback(
+    async (pageNum) => {
+      const requestId = ++requestIdRef.current;
+      const laTrangDau = pageNum === 1;
+      laTrangDau ? setLoading(true) : setLoadingMore(true);
+      try {
+        const dateRange = toISODateRange(dateFilter);
+        const res = await api.get("/phieu-bao-hanh", {
+          params: {
+            page: pageNum,
+            limit: PAGE_SIZE,
+            search: debouncedSearch,
+            nhaKhoaId: nhaKhoaFilter,
+            fromDate: dateRange.fromISO,
+            toDate: dateRange.toISO,
+          },
+        });
+        if (requestId !== requestIdRef.current) return;
+        if (res.data?.success) {
+          const data = res.data.data || [];
+          setPhieuList((prev) => {
+            if (laTrangDau) return data;
+            const daCo = new Set(prev.map((p) => p._id));
+            return [...prev, ...data.filter((p) => !daCo.has(p._id))];
+          });
+          setTotalCount(res.data.total || 0);
+          setPage(pageNum);
+        } else {
+          toast.error("Lỗi khi tải danh sách phiếu bảo hành");
         }
-      });
-      if (res.data?.success) {
-        setPhieuList(res.data.data || []);
-        setTotalCount(res.data.total || 0);
-      } else {
-        toast.error("Lỗi khi tải danh sách phiếu bảo hành");
+      } catch (error) {
+        if (requestId !== requestIdRef.current) return;
+        toast.error(error.response?.data?.message || "Lỗi khi tải dữ liệu");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Lỗi khi tải dữ liệu");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [debouncedSearch, nhaKhoaFilter, dateFilter]
+  );
 
-  // Pagination handlers
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  // Đổi bộ lọc / làm mới → tải lại từ trang 1
+  useEffect(() => {
+    loadPage(1);
+  }, [loadPage, reloadKey]);
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  const loadPhieuList = () => setReloadKey((k) => k + 1);
+
+  // Sentinel cuối danh sách vào viewport → tải trang tiếp theo
+  useEffect(() => {
+    const els = [sentinelDesktopRef.current, sentinelMobileRef.current].filter(Boolean);
+    if (els.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasMore && !loading && !loadingMore) {
+          loadPage(page + 1);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, page, loadPage]);
 
   // Mở modal edit
   const handleOpenEdit = (phieu) => {
@@ -129,64 +159,134 @@ const PhieuBaoHanhPage = () => {
     if (!window.confirm("Bạn chắc chắn muốn xóa phiếu bảo hành này?")) return;
 
     try {
-      setLoading(true);
       const res = await api.delete(`/phieu-bao-hanh/${phieuId}`);
       if (res.data?.success) {
         toast.success("Xóa phiếu bảo hành thành công");
-        loadPhieuList();
+        // Bỏ khỏi danh sách tại chỗ để giữ vị trí cuộn
+        setPhieuList((prev) => prev.filter((p) => p._id !== phieuId));
+        setTotalCount((t) => Math.max(0, t - 1));
       } else {
         toast.error(res.data?.message || "Lỗi khi xóa");
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Lỗi khi xóa");
-    } finally {
-      setLoading(false);
     }
   };
 
-  return (
-    <div className="p-4 bg-gray-100">
-      <div className="mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-4">
-        {/* Hàng trên: Chọn ngày tạo & Tất cả nha khoa */}
-        <div className="flex flex-col sm:flex-row gap-4 w-full">
-          <div className="w-full sm:w-auto">
-            <ExportDateSelector
-              placeholder="Chọn ngày tạo"
-              value={dateFilter}
-              onChange={(dates) => {
-                setDateFilter(dates);
-                setPage(0);
-              }}
-            />
-          </div>
-          <TextField
-            select
-            size="small"
-            value={nhaKhoaFilter}
-            onChange={(e) => {
-              setNhaKhoaFilter(e.target.value);
-              setPage(0);
-            }}
-            className="w-full sm:w-64 bg-slate-50/50 rounded-lg"
-            SelectProps={{
-              displayEmpty: true,
-            }}
-          >
-            <MenuItem value="all">
-              <span className="text-slate-500">Tất cả nha khoa</span>
-            </MenuItem>
-            {nhaKhoaOptions.map((nk) => (
-              <MenuItem key={nk._id} value={nk._id}>
-                {nk.tenNhaKhoa || nk.hoVaTen || "Không tên"}
-              </MenuItem>
-            ))}
-          </TextField>
-        </div>
+  const conBaoHanh = (item) => new Date(item.baoHanhDen) >= new Date();
 
-        {/* Hàng dưới: Thanh tìm kiếm & Nút làm mới */}
-        <div className="flex items-center gap-3 w-full">
+  const renderBadgeBH = (item) =>
+    conBaoHanh(item) ? (
+      <span className="text-[10px] leading-4 font-bold px-1 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap">Còn BH</span>
+    ) : (
+      <span className="text-[10px] leading-4 font-bold px-1 rounded bg-rose-100 text-rose-700 whitespace-nowrap">Hết BH</span>
+    );
+
+  // 1 dòng / sản phẩm: tên · vị trí · SL · màu · thời hạn · trạng thái
+  const renderItemBH = (item, idx) => (
+    <div key={idx} className="flex flex-wrap items-center gap-x-2 leading-5 py-0.5">
+      <span className="font-semibold text-slate-800">
+        {idx + 1}. {item.tenSanPhamBaoHanh || item.sanPham?.tenSanPham || item.sanPham || "---"}
+      </span>
+      {(item.viTriRang || item.soLuong || item.mau) && (
+        <span className="text-slate-500 text-sm">
+          {[
+            item.viTriRang && `Vị trí: ${item.viTriRang}`,
+            item.soLuong && `SL: ${item.soLuong}`,
+            item.mau && `Màu: ${item.mau}`,
+          ].filter(Boolean).join(" · ")}
+        </span>
+      )}
+      <span className="text-blue-700 text-sm whitespace-nowrap">
+        {formatDateVN(item.baoHanhTu)} → {formatDateVN(item.baoHanhDen)}
+      </span>
+      {renderBadgeBH(item)}
+    </div>
+  );
+
+  const moTraCuu = (phieu) => {
+    const qrCode = phieu.maQR || phieu.maBaoHanh || "";
+    window.open(`${window.location.origin}/tra-cuu-bao-hanh/?qrcode=${qrCode}`, "_blank");
+  };
+
+  const moDonHang = (phieu) => {
+    if (phieu.donHang?._id) navigate(`/donhang/${phieu.donHang._id}/edit`);
+  };
+
+  // Dòng trạng thái cuối danh sách: đang tải thêm / đã hiển thị bao nhiêu
+  const renderTrangThaiTai = () =>
+    phieuList.length > 0 && (
+      <div className="px-3 py-1.5 text-sm text-center text-slate-500 border-t border-slate-100 bg-white">
+        {loadingMore
+          ? "Đang tải thêm..."
+          : hasMore
+            ? `Đã hiển thị ${phieuList.length} / ${totalCount} phiếu — cuộn xuống để tải thêm`
+            : `Đã hiển thị tất cả ${totalCount} phiếu`}
+      </div>
+    );
+
+  const renderHanhDong = (phieu) => (
+    <div className="flex justify-center items-center">
+      <Tooltip title="Check thẻ bảo hành">
+        <IconButton size="small" sx={{ p: 0.5 }} className="text-teal-600" onClick={() => moTraCuu(phieu)}>
+          <QrCodeScannerIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="In thẻ bảo hành">
+        <IconButton size="small" sx={{ p: 0.5 }} className="text-purple-600" onClick={() => setPrintPhieu(phieu)}>
+          <PrintIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Chỉnh sửa">
+        <IconButton size="small" sx={{ p: 0.5 }} className="text-blue-600" onClick={() => handleOpenEdit(phieu)}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Xóa bỏ">
+        <IconButton size="small" sx={{ p: 0.5 }} className="text-rose-600" onClick={() => handleDelete(phieu._id)}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </div>
+  );
+
+  return (
+    <div className="p-3 bg-gray-100">
+      {/* Bộ lọc: 1 hàng trên desktop */}
+      <div className="mb-3 bg-white p-2.5 rounded-lg shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center gap-2">
+        <div className="w-full md:w-auto">
+          <ExportDateSelector
+            placeholder="Chọn ngày tạo"
+            value={dateFilter}
+            onChange={(dates) => {
+              setDateFilter(dates);
+            }}
+          />
+        </div>
+        <TextField
+          select
+          size="small"
+          value={nhaKhoaFilter}
+          onChange={(e) => {
+            setNhaKhoaFilter(e.target.value);
+          }}
+          className="w-full md:w-60 bg-slate-50/50 rounded-lg"
+          SelectProps={{
+            displayEmpty: true,
+          }}
+        >
+          <MenuItem value="all">
+            <span className="text-slate-500">Tất cả nha khoa</span>
+          </MenuItem>
+          {nhaKhoaOptions.map((nk) => (
+            <MenuItem key={nk._id} value={nk._id}>
+              {nk.tenNhaKhoa || nk.hoVaTen || "Không tên"}
+            </MenuItem>
+          ))}
+        </TextField>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <TextField
-            placeholder="Tìm kiếm nhanh theo mã phiếu, mã đơn hàng, tên bệnh nhân..."
+            placeholder="Tìm theo mã phiếu, mã đơn hàng, tên bệnh nhân..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             fullWidth
@@ -195,21 +295,20 @@ const PhieuBaoHanhPage = () => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon className="text-slate-400" />
+                  <SearchIcon className="text-slate-400" fontSize="small" />
                 </InputAdornment>
               ),
               className: "bg-slate-50/50 rounded-lg text-base",
             }}
-            className="flex-1"
           />
           <IconButton
             onClick={loadPhieuList}
             disabled={loading}
             title="Làm mới dữ liệu"
-            className="text-slate-600 hover:bg-slate-100 transition-all shadow-sm shrink-0"
-            sx={{ width: 40, height: 40, borderRadius: "10px" }}
+            className="text-slate-600 hover:bg-slate-100 shrink-0"
+            sx={{ width: 36, height: 36, borderRadius: "8px" }}
           >
-            <RefreshIcon />
+            <RefreshIcon fontSize="small" />
           </IconButton>
         </div>
       </div>
@@ -219,182 +318,68 @@ const PhieuBaoHanhPage = () => {
         <TableContainer
           component={Paper}
           elevation={0}
-          className="border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+          className="border border-slate-200 rounded-lg shadow-sm overflow-hidden"
         >
           <div className="overflow-x-auto">
-            <Table size="medium" sx={{ minWidth: 1000 }}>
-              <TableHead className="bg-slate-50 border-b border-slate-200">
+            <Table
+              size="small"
+              sx={{
+                minWidth: 1000,
+                "& .MuiTableCell-root": { px: 1, py: 0.5, verticalAlign: "top", fontSize: "0.95rem" },
+                "& .MuiTableCell-head": { py: 0.75, fontWeight: 600, color: "#334155", whiteSpace: "nowrap", verticalAlign: "middle" },
+              }}
+            >
+              <TableHead className="bg-slate-50">
                 <TableRow>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Mã BH
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Mã Đơn Hàng
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Bệnh Nhân
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Nha Khoa
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Sản Phẩm
-                  </TableCell>
-                  <TableCell
-                    className="font-semibold text-slate-700 py-4"
-                    style={{ width: "320px" }}
-                  >
-                    Chi Tiết Thời Hạn
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-700 py-4">
-                    Ghi Chú
-                  </TableCell>
-                  <TableCell
-                    align="center"
-                    className="font-semibold text-slate-700 py-4"
-                  >
-                    Hành Động
-                  </TableCell>
+                  <TableCell>Mã BH</TableCell>
+                  <TableCell>Mã đơn hàng</TableCell>
+                  <TableCell>Bệnh nhân</TableCell>
+                  <TableCell>Nha khoa</TableCell>
+                  <TableCell>Sản phẩm & thời hạn bảo hành</TableCell>
+                  <TableCell>Ghi chú</TableCell>
+                  <TableCell align="center" style={{ width: 130 }}>Hành động</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {phieuList.length > 0 ? (
                   phieuList.map((phieu) => (
-                    <TableRow
-                      key={phieu._id}
-                      hover
-                      className="transition-colors hover:bg-slate-50/80"
-                    >
-                      <TableCell className="font-bold text-blue-600">
+                    <TableRow key={phieu._id} hover>
+                      <TableCell className="font-bold text-blue-600 whitespace-nowrap">
                         {phieu.maBaoHanh}
                       </TableCell>
-                      <TableCell className="font-medium text-slate-600">
-                        <Button
-                          variant="text"
-                          onClick={() => {
-                            if (phieu.donHang?._id)
-                              navigate(
-                                `/donhang/${phieu.donHang?._id}/edit`
-                              );
-                          }}
+                      <TableCell className="whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => moDonHang(phieu)}
+                          className="font-medium text-blue-600 hover:underline"
                         >
                           {phieu.donHang?.maDonHang || phieu.maBaoHanh || "---"}
-                        </Button>
+                        </button>
                       </TableCell>
                       <TableCell className="font-semibold text-slate-900">
                         {phieu.benhNhan?.hoVaTen || "---"}
                       </TableCell>
-                      <TableCell className="text-slate-600 text-base">
-                        {phieu.nhaKhoa?.hoVaTen ||
-                          phieu.nhaKhoa?.tenGiaoDich ||
-                          "---"}
+                      <TableCell className="text-slate-600">
+                        {phieu.nhaKhoa?.hoVaTen || phieu.nhaKhoa?.tenGiaoDich || "---"}
                       </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={`${phieu.danhSachBaoHanh?.length || 0} mục`}
-                          color="primary"
-                          size="small"
-                          variant="soft"
-                          className="bg-blue-50 text-blue-700 font-semibold border-none"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 py-1">
-                          {phieu.danhSachBaoHanh?.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="text-base p-2.5 bg-slate-50 border border-slate-200 rounded-lg shadow-sm"
-                            >
-                              <div className="font-bold text-slate-800 mb-0.5">
-                                {idx + 1}.{" "}
-                                {item.sanPham?.tenSanPham ||
-                                  item.sanPham ||
-                                  "---"}
-                              </div>
-                              <div className="text-slate-500 font-medium flex flex-wrap gap-x-2 gap-y-0.5">
-                                {item.viTriRang && (
-                                  <span>Vị trí: {item.viTriRang}</span>
-                                )}
-                                {item.soLuong && (
-                                  <span>| SL: {item.soLuong}</span>
-                                )}
-                                {item.mau && <span>| Màu: {item.mau}</span>}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="text-blue-700 font-medium bg-blue-50/50 inline-block px-1.5 py-0.5 rounded">
-                                  {formatDateVN(item.baoHanhTu)} →{" "}
-                                  {formatDateVN(item.baoHanhDen)}
-                                </div>
-                                {new Date(item.baoHanhDen) >= new Date() ? (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">Còn BH</span>
-                                ) : (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">Hết BH</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                      <TableCell style={{ minWidth: 380 }}>
+                        <div className="max-h-32 overflow-y-auto divide-y divide-slate-100">
+                          {phieu.danhSachBaoHanh?.map(renderItemBH)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div
-                          className="text-base text-slate-500 max-w-xs truncate"
-                          title={phieu.ghiChu}
-                        >
+                        <div className="text-slate-500 max-w-[200px] truncate" title={phieu.ghiChu}>
                           {phieu.ghiChu || "---"}
                         </div>
                       </TableCell>
-                      <TableCell align="center">
-                        <div className="flex justify-center items-center gap-1">
-                          <Tooltip title="Check thẻ bảo hành">
-                            <IconButton
-                              size="small"
-                              className="text-teal-600 hover:bg-teal-50"
-                              onClick={() => {
-                                const qrCode = phieu.maQR || phieu.maBaoHanh || "";
-                                window.open(`${window.location.origin}/tra-cuu-bao-hanh/?qrcode=${qrCode}`, "_blank");
-                              }}
-                            >
-                              <QrCodeScannerIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="In thẻ bảo hành">
-                            <IconButton
-                              size="small"
-                              className="text-purple-600 hover:bg-purple-50"
-                              onClick={() => setPrintPhieu(phieu)}
-                            >
-                              <PrintIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Chỉnh sửa">
-                            <IconButton
-                              size="small"
-                              className="text-blue-600 hover:bg-blue-50"
-                              onClick={() => handleOpenEdit(phieu)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Xóa bỏ">
-                            <IconButton
-                              size="small"
-                              className="text-rose-600 hover:bg-rose-50"
-                              onClick={() => handleDelete(phieu._id)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </div>
+                      <TableCell align="center" sx={{ py: "2px !important" }}>
+                        {renderHanhDong(phieu)}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      align="center"
-                      className="py-12 text-slate-400 font-medium"
-                    >
+                    <TableCell colSpan={7} align="center" className="text-slate-400 font-medium" sx={{ py: "32px !important" }}>
                       {loading ? "Đang tải dữ liệu..." : "Không tìm thấy dữ liệu phiếu bảo hành phù hợp"}
                     </TableCell>
                   </TableRow>
@@ -402,189 +387,60 @@ const PhieuBaoHanhPage = () => {
               </TableBody>
             </Table>
           </div>
-          <div className="border-t border-gray-100 bg-white shrink-0 z-10 relative rounded-b-xl">
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={totalCount}
-              page={page}
-              onPageChange={handleChangePage}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              labelRowsPerPage="Số hàng mỗi trang"
-            />
-          </div>
+          {renderTrangThaiTai()}
+          <div ref={sentinelDesktopRef} className="h-1" />
         </TableContainer>
       </div>
 
       {/* Mobile: Card Layout */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-2">
         {phieuList.length > 0 ? (
           phieuList.map((phieu) => (
             <Paper
               key={phieu._id}
               elevation={0}
-              className="p-5 border border-slate-200 rounded-xl shadow-sm bg-white relative overflow-hidden"
+              className="px-3 py-2 border border-slate-200 border-l-4 border-l-blue-500 rounded-lg bg-white"
             >
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Mã Bảo Hành
-                    </span>
-                    <span className="font-bold text-base text-blue-600">
-                      {phieu.maBaoHanh}
-                    </span>
-                  </div>
-                  <div className="flex gap-1 bg-slate-50 p-1 rounded-lg">
-                    <IconButton
-                      size="small"
-                      className="text-teal-600"
-                      onClick={() => {
-                        const qrCode = phieu.maQR || phieu.maBaoHanh || "";
-                        window.open(`${window.location.origin}/tra-cuu-bao-hanh/?qrcode=${qrCode}`, "_blank");
-                      }}
-                    >
-                      <QrCodeScannerIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      className="text-purple-600"
-                      onClick={() => setPrintPhieu(phieu)}
-                    >
-                      <PrintIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      className="text-blue-600"
-                      onClick={() => handleOpenEdit(phieu)}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      className="text-rose-600"
-                      onClick={() => handleDelete(phieu._id)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </div>
+              <div className="flex justify-between items-center gap-2">
+                <div className="min-w-0">
+                  <span className="font-bold text-blue-600">{phieu.maBaoHanh}</span>
+                  <span className="text-slate-400 mx-1">·</span>
+                  <button
+                    type="button"
+                    onClick={() => moDonHang(phieu)}
+                    className="font-medium text-slate-700 hover:text-blue-600"
+                  >
+                    {phieu.donHang?.maDonHang || "---"}
+                  </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Mã Đơn Hàng
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (phieu.donHang?._id)
-                          navigate(`/donhang/${phieu.donHang?._id}/edit`);
-                      }}
-                      className="font-semibold text-slate-800 text-base hover:text-blue-600 cursor-pointer transition-colors"
-                    >
-                      {phieu.donHang?.maDonHang || phieu.maBaoHanh || "---"}
-                    </button>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Bệnh Nhân
-                    </span>
-                    <span className="font-bold text-slate-900 text-base">
-                      {phieu.benhNhan?.hoVaTen || "---"}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Nha Khoa
-                  </span>
-                  <span className="font-medium text-slate-700 text-base">
-                    {phieu.nhaKhoa?.hoVaTen ||
-                      phieu.nhaKhoa?.tenGiaoDich ||
-                      "---"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Trạng thái:
-                  </span>
-                  <Chip
-                    label={`${phieu.danhSachBaoHanh?.length || 0} sản phẩm`}
-                    color="primary"
-                    size="small"
-                    variant="soft"
-                    className="bg-blue-50 text-blue-700 font-bold text-base"
-                  />
-                </div>
-
-                {phieu.danhSachBaoHanh?.length > 0 && (
-                  <div className="space-y-2 pt-3 border-t border-slate-100">
-                    {phieu.danhSachBaoHanh?.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="text-base p-3 bg-slate-50 rounded-lg border border-slate-200"
-                      >
-                        <div className="font-bold text-slate-800">
-                          {idx + 1}.{" "}
-                          {item.tenSanPhamBaoHanh || item.sanPham?.tenSanPham || item.sanPham || "---"}
-                        </div>
-                        <div className="text-slate-500 mt-1 flex flex-wrap gap-2">
-                          {item.viTriRang && (
-                            <span>Vị trí: {item.viTriRang}</span>
-                          )}
-                          {item.soLuong && <span>SL: {item.soLuong}</span>}
-                          {item.mau && <span>Màu: {item.mau}</span>}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="text-blue-700 font-semibold bg-white border border-blue-100 inline-block px-2 py-0.5 rounded shadow-xs">
-                            {formatDateVN(item.baoHanhTu)} →{" "}
-                            {formatDateVN(item.baoHanhDen)}
-                          </div>
-                          {new Date(item.baoHanhDen) >= new Date() ? (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">Còn BH</span>
-                          ) : (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">Hết BH</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {phieu.ghiChu && (
-                  <div className="pt-3 border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Ghi Chú
-                    </span>
-                    <span className="text-base text-slate-600 italic mt-0.5 block">
-                      {phieu.ghiChu}
-                    </span>
-                  </div>
-                )}
+                {renderHanhDong(phieu)}
               </div>
+              <div className="text-sm text-slate-600 leading-5">
+                <span className="font-semibold text-slate-900">{phieu.benhNhan?.hoVaTen || "---"}</span>
+                <span className="mx-1">·</span>
+                {phieu.nhaKhoa?.hoVaTen || phieu.nhaKhoa?.tenGiaoDich || "---"}
+              </div>
+              {phieu.danhSachBaoHanh?.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-slate-100 divide-y divide-slate-100">
+                  {phieu.danhSachBaoHanh.map(renderItemBH)}
+                </div>
+              )}
+              {phieu.ghiChu && (
+                <div className="mt-1 text-sm text-slate-500 italic">Ghi chú: {phieu.ghiChu}</div>
+              )}
             </Paper>
           ))
         ) : (
-          <div className="py-12 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
+          <div className="py-8 text-center text-slate-400 font-medium bg-white rounded-lg border border-slate-200">
             {loading ? "Đang tải dữ liệu..." : "Không tìm thấy dữ liệu phiếu bảo hành phù hợp"}
           </div>
         )}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            component="div"
-            count={totalCount}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage="Số hàng"
-          />
-        </div>
+        {phieuList.length > 0 && (
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            {renderTrangThaiTai()}
+          </div>
+        )}
+        <div ref={sentinelMobileRef} className="h-1" />
       </div>
 
       {/* Unified Edit Modal */}
