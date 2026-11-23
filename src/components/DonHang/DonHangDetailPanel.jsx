@@ -31,6 +31,7 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import { getAuthSelector } from "../../redux/selector";
 import { hasRouteAccess } from "../../config/permissions";
 import GhiChuAddModal from "../GhiChu/GhiChuAddModal";
+import { NHOM_MUA_GIUM } from "../../data/sanPhamConfig";
 
 const DonHangDetailPanel = (props) => {
   const { donHang, onClose } = props;
@@ -441,6 +442,12 @@ const DonHangDetailPanel = (props) => {
                       )}
                       {sp.mau && <div className="text-base text-gray-700">• Màu: {sp.mau}</div>}
                       {sp.ghiChu && <div className="text-base text-gray-700">• {sp.ghiChu}</div>}
+                      {sp.sanPham?.nhomSanPham === NHOM_MUA_GIUM && sp.donGia !== null && sp.donGia !== undefined && (
+                        <div className="text-base text-gray-700">
+                          • Đơn giá: <span className="font-medium text-black">{Number(sp.donGia).toLocaleString("vi-VN")} đ</span>
+                          {sp.soLuong > 1 && <> × {sp.soLuong} = <span className="font-medium text-black">{(Number(sp.donGia) * sp.soLuong).toLocaleString("vi-VN")} đ</span></>}
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
