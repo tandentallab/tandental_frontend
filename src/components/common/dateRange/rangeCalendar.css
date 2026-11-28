@@ -16,6 +16,40 @@
 }
 .rcal *, .rcal *::before { box-sizing: border-box; }
 
+/* Mốc chọn nhanh: Hôm nay, Hôm qua, Tuần này... */
+.rcal-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--rcal-border);
+}
+.rcal-preset {
+  border: 1px solid var(--rcal-border);
+  background: #f8fafc;
+  color: var(--rcal-text);
+  font-size: 12.5px;
+  font-family: inherit;
+  line-height: 1;
+  padding: 6px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.rcal-preset:hover {
+  background: var(--rcal-primary-light);
+  border-color: var(--rcal-primary);
+  color: var(--rcal-primary);
+}
+.rcal-preset.active {
+  background: var(--rcal-primary);
+  border-color: var(--rcal-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 .rcal-header {
   display: flex;
   align-items: center;

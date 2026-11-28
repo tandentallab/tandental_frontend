@@ -16,6 +16,9 @@ const DATE_PRESETS = [
     { key: "last_30", label: "Trong vòng 30 ngày" },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 export const EMPTY_DATE = { preset: null, customFrom: "", customTo: "" };
 
 const STATUS_OPTIONS = ["Lưu tạm", "Chưa thanh toán", "Thanh toán một phần", "Đã thanh toán"];
@@ -80,10 +83,14 @@ const HoaDonFilterDrawer = ({
                 start: draftNgayXuat.preset === "custom" ? draftNgayXuat.customFrom : "",
                 end: draftNgayXuat.preset === "custom" ? draftNgayXuat.customTo : "",
             }}
+            presets={QUICK_DATE_PRESETS}
+            activePreset={draftNgayXuat.preset && draftNgayXuat.preset !== "custom" ? draftNgayXuat.preset : undefined}
             onApply={(dates) => {
-                const newNgayXuat = dates.start
-                    ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-                    : EMPTY_DATE;
+                const newNgayXuat = dates.preset
+                    ? { preset: dates.preset, customFrom: "", customTo: "" }
+                    : dates.start
+                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                        : EMPTY_DATE;
                 setAnchorElCustomDate(null);
                 setDraftNgayXuat(newNgayXuat);
                 onApply(newNgayXuat, draftNhaKhoa, draftTrangThai);

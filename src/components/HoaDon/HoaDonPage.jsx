@@ -64,6 +64,9 @@ const DATE_PRESETS = [
   { key: "last_30", label: "Trong vòng 30 ngày" },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 const EMPTY_DATE = { preset: null, customFrom: "", customTo: "" };
 
 const _getDateRange = (preset) => {
@@ -628,11 +631,15 @@ const HoaDonPage = () => {
                     start: exportDateFilter?.preset === "custom" ? exportDateFilter.customFrom || "" : "",
                     end: exportDateFilter?.preset === "custom" ? exportDateFilter.customTo || "" : "",
                   }}
+                  presets={QUICK_DATE_PRESETS}
+                  activePreset={exportDateFilter?.preset && exportDateFilter.preset !== "custom" ? exportDateFilter.preset : undefined}
                   onApply={(dates) => {
                     setExportDateFilter(
-                      dates.start
-                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-                        : EMPTY_DATE
+                      dates.preset
+                        ? { preset: dates.preset, customFrom: "", customTo: "" }
+                        : dates.start
+                          ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                          : EMPTY_DATE
                     );
                     setExportDateAnchorEl(null);
                   }}

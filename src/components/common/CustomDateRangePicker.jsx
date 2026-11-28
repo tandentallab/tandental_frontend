@@ -5,7 +5,8 @@ import RangeCalendar from './dateRange/RangeCalendar';
 // Popover lịch chọn khoảng ngày (giao diện dùng chung RangeCalendar).
 // Chọn xong ngày kết thúc (hoặc 1 ngày với mode="single") là tự áp dụng & đóng.
 // "Đặt lại" = áp dụng khoảng rỗng (bỏ lọc).
-const CustomDateRangePicker = ({ open, anchorEl, onClose, initialDates, onApply, mode = 'range', minDate, maxDate }) => {
+// presets = [{ key, label }]: mốc chọn nhanh ở đầu lịch; bấm → onApply({ start: '', end: '', preset: key, label }).
+const CustomDateRangePicker = ({ open, anchorEl, onClose, initialDates, onApply, mode = 'range', minDate, maxDate, presets, activePreset }) => {
     const apply = (dates) => {
         onApply?.(dates);
         onClose?.();
@@ -30,6 +31,9 @@ const CustomDateRangePicker = ({ open, anchorEl, onClose, initialDates, onApply,
                 maxDate={maxDate}
                 onComplete={apply}
                 onReset={() => apply({ start: '', end: '' })}
+                presets={presets}
+                activePreset={activePreset}
+                onPreset={(p) => apply({ start: '', end: '', preset: p.key, label: p.label })}
             />
         </Popover>
     );

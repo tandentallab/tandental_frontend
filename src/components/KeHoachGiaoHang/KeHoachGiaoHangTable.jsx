@@ -55,6 +55,9 @@ const DATE_PRESETS = [
   { key: "last_30", label: "Trong vòng 30 ngày" },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 const EMPTY_DATE = { preset: null, customFrom: "", customTo: "" };
 
 const getDateRange = (preset) => {
@@ -388,10 +391,14 @@ const KeHoachGiaoHangTable = () => {
             start: cf.preset === "custom" ? cf.customFrom : "",
             end: cf.preset === "custom" ? cf.customTo : "",
           }}
+          presets={QUICK_DATE_PRESETS}
+          activePreset={cf.preset && cf.preset !== "custom" ? cf.preset : undefined}
           onApply={(dates) => {
-            const newNgay = dates.start
-              ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-              : { preset: null, customFrom: "", customTo: "" };
+            const newNgay = dates.preset
+              ? { preset: dates.preset, customFrom: "", customTo: "" }
+              : dates.start
+                ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                : { preset: null, customFrom: "", customTo: "" };
 
             setAnchorElCustomDate(null);
             setActiveDateType(null);

@@ -32,6 +32,9 @@ const RangeCalendar = ({
   onReset,
   onSelectionChange,
   resetLabel = "Đặt lại",
+  presets, // [{ key, label }] — mốc chọn nhanh hiện ở đầu lịch (Hôm nay, Hôm qua...)
+  activePreset, // key mốc đang áp dụng (để tô đậm)
+  onPreset, // (preset) => void — bấm 1 mốc là áp dụng luôn
 }) => {
   const isSingle = mode === "single";
   const [start, setStart] = useState(() => parse(initialStart));
@@ -119,6 +122,24 @@ const RangeCalendar = ({
 
   return (
     <div className="rcal" onMouseDown={(e) => e.stopPropagation()}>
+      {presets?.length > 0 && (
+        <div className="rcal-presets">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={`rcal-preset ${activePreset === p.key ? "active" : ""}`}
+              onClick={() => {
+                clearTimeout(timerRef.current);
+                onPreset?.(p);
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="rcal-header">
         <button type="button" className="rcal-nav" onClick={() => setViewMonth((m) => m.subtract(1, "month"))} title="Tháng trước">
           <ChevronLeft />

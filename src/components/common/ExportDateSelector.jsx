@@ -2,15 +2,18 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import dayjs from "dayjs";
 import DateField from "./dateRange/DateField";
+import { EXPORT_DATE_PRESETS } from "../../utils/exportDatePresets";
+
+// Mốc chọn nhanh hiện ở đầu lịch (bỏ "Chọn trên Lịch" vì lịch đã mở sẵn)
+const QUICK_PRESETS = EXPORT_DATE_PRESETS.filter((p) => p.key !== "custom");
 
 // Date <-> "YYYY-MM-DD" (giờ địa phương) để dùng chung lịch RangeCalendar
 const toStr = (d) => (d ? dayjs(d).format("YYYY-MM-DD") : "");
 const toDate = (s) => (s ? dayjs(s, "YYYY-MM-DD").startOf("day").toDate() : null);
 
-// Bộ chọn khoảng ngày: bấm là mở lịch ngay.
+// Bộ chọn khoảng ngày: bấm là mở lịch ngay, mốc chọn nhanh (Hôm nay, Tuần này...) ở đầu lịch.
 // value = { preset, startDate: Date|null, endDate: Date|null }
-// Chọn ngày → preset "custom"; xoá hết → preset "" (không lọc theo ngày).
-// Giá trị mốc nhanh cũ (vd "today") vẫn được toISODateRange hiểu, chỉ là không còn chọn được trên giao diện.
+// Chọn ngày trên lịch → preset "custom"; bấm mốc → preset = key của mốc; xoá hết → preset "".
 const ExportDateSelector = ({
   title,
   value,
@@ -44,6 +47,9 @@ const ExportDateSelector = ({
         onChange={handleRangeChange}
         maxRangeDays={maxRangeDays}
         placeholder={placeholder}
+        presets={QUICK_PRESETS}
+        activePreset={value?.preset && !laKhoangNgay ? value.preset : undefined}
+        onPreset={(p) => onChange({ preset: p.key, startDate: null, endDate: null })}
       />
     </Box>
   );

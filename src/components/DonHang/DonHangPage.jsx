@@ -66,6 +66,9 @@ const DATE_PRESETS = [
   { key: "last_30", label: "Trong vòng 30 ngày" },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 const TRANG_THAI_OPTIONS = [
   "Chờ xử lý",
   "Đang sản xuất",
@@ -692,11 +695,15 @@ const DonHangPage = () => {
         start: cf.preset === "custom" ? cf.customFrom || "" : "",
         end: cf.preset === "custom" ? cf.customTo || "" : "",
       }}
+      presets={QUICK_DATE_PRESETS}
+      activePreset={cf.preset && cf.preset !== "custom" ? cf.preset : undefined}
       onApply={(dates) => {
         scf(
-          dates.start
-            ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-            : EMPTY_DATE
+          dates.preset
+            ? { preset: dates.preset, customFrom: "", customTo: "" }
+            : dates.start
+              ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+              : EMPTY_DATE
         );
         setDatePickerAnchor((prev) => ({ ...prev, [dateKey]: null }));
       }}

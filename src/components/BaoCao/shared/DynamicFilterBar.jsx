@@ -121,6 +121,7 @@ const DynamicFilterBar = ({
             </div>
 
             <CustomDateRangePicker
+                activeLabel={dateLabel}
                 open={Boolean(anchorEl)}
                 anchorEl={anchorEl}
                 onClose={() => setAnchorEl(null)}

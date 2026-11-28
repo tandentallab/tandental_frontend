@@ -44,6 +44,9 @@ const DATE_PRESETS = [
     { key: "last_30", label: "Trong vòng 30 ngày" },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 const getDateRange = (preset) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -312,10 +315,14 @@ export default function PhieuThuPage() {
                     start: cf.preset === "custom" ? cf.customFrom : "",
                     end: cf.preset === "custom" ? cf.customTo : "",
                 }}
+                presets={QUICK_DATE_PRESETS}
+                activePreset={cf.preset && cf.preset !== "custom" ? cf.preset : undefined}
                 onApply={(dates) => {
-                    const newNgayThu = dates.start
-                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-                        : EMPTY_DATE;
+                    const newNgayThu = dates.preset
+                        ? { preset: dates.preset, customFrom: "", customTo: "" }
+                        : dates.start
+                            ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                            : EMPTY_DATE;
 
                     setAnchorElCustomDate(null);
                     scf(newNgayThu);
@@ -641,11 +648,15 @@ export default function PhieuThuPage() {
                                                 start: exportDateFilter?.preset === "custom" ? exportDateFilter.customFrom || "" : "",
                                                 end: exportDateFilter?.preset === "custom" ? exportDateFilter.customTo || "" : "",
                                             }}
+                                            presets={QUICK_DATE_PRESETS}
+                                            activePreset={exportDateFilter?.preset && exportDateFilter.preset !== "custom" ? exportDateFilter.preset : undefined}
                                             onApply={(dates) => {
                                                 setExportDateFilter(
-                                                    dates.start
-                                                        ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
-                                                        : EMPTY_DATE
+                                                    dates.preset
+                                                        ? { preset: dates.preset, customFrom: "", customTo: "" }
+                                                        : dates.start
+                                                            ? { preset: "custom", customFrom: dates.start, customTo: dates.end || dates.start }
+                                                            : EMPTY_DATE
                                                 );
                                                 setExportDateAnchorEl(null);
                                             }}

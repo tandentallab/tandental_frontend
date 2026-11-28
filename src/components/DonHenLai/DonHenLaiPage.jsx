@@ -45,6 +45,9 @@ const DATE_PRESETS = [
   { key: "custom", label: "Chọn trên Lịch", isCalendar: true },
 ];
 
+// Mốc chọn nhanh hiện ở đầu lịch
+const QUICK_DATE_PRESETS = DATE_PRESETS.filter((p) => !p.isCalendar);
+
 // Trả về khoảng ngày dạng "YYYY-MM-DD" (bao gồm cả 2 đầu)
 const presetToRange = (preset) => {
   const t = dayjs().startOf("day");
@@ -534,7 +537,7 @@ const DonHenLaiPage = () => {
                           ? draftDate.from === draftDate.to
                             ? dayjs(draftDate.from).format("DD/MM/YYYY")
                             : `${dayjs(draftDate.from).format("DD/MM")} - ${dayjs(draftDate.to).format("DD/MM")}`
-                          : "Chọn ngày hẹn"}
+                          : DATE_PRESETS.find((p) => p.key === draftDate.preset)?.label || "Chọn ngày hẹn"}
                       </button>
                     </div>
                     <CustomDateRangePicker
@@ -542,8 +545,11 @@ const DonHenLaiPage = () => {
                       anchorEl={anchorDraftCal}
                       onClose={() => setAnchorDraftCal(null)}
                       initialDates={{ start: draftDate.from, end: draftDate.to }}
+                      presets={QUICK_DATE_PRESETS}
+                      activePreset={draftDate.preset !== "custom" ? draftDate.preset : undefined}
                       onApply={(dates) => {
                         setAnchorDraftCal(null);
+                        if (dates?.preset) return setDraftDate(makePresetDate(dates.preset));
                         if (!dates?.start) return;
                         setDraftDate({ preset: "custom", from: dates.start, to: dates.end || dates.start });
                       }}
@@ -677,8 +683,11 @@ const DonHenLaiPage = () => {
             anchorEl={anchorCalendar}
             onClose={() => setAnchorCalendar(null)}
             initialDates={{ start: dateFilter.from, end: dateFilter.to }}
+            presets={QUICK_DATE_PRESETS}
+            activePreset={dateFilter.preset !== "custom" ? dateFilter.preset : undefined}
             onApply={(dates) => {
               setAnchorCalendar(null);
+              if (dates?.preset) return setDateFilter(makePresetDate(dates.preset));
               if (!dates?.start) return;
               setDateFilter({ preset: "custom", from: dates.start, to: dates.end || dates.start });
             }}

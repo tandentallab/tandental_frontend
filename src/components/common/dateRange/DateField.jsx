@@ -32,6 +32,9 @@ const DateField = ({
   className = "",
   style,
   defaultOpen = false, // mở lịch ngay khi ô vừa hiện ra
+  presets, // [{ key, label }] mốc chọn nhanh trong lịch
+  activePreset, // key mốc đang áp dụng → ô hiển thị nhãn của mốc
+  onPreset, // (preset) => void
 }) => {
   const isSingle = mode === "single";
   const anchorRef = useRef(null);
@@ -46,7 +49,8 @@ const DateField = ({
   const start = isSingle ? (value || "") : (value?.start || "");
   const end = isSingle ? "" : (value?.end || "");
 
-  const text = isSingle
+  const nhanMoc = activePreset ? presets?.find((p) => p.key === activePreset)?.label : "";
+  const text = nhanMoc ? nhanMoc : isSingle
     ? hienThi(start)
     : start && end
       ? `${hienThi(start)}  →  ${hienThi(end)}`
@@ -89,7 +93,7 @@ const DateField = ({
         <span className={`rcal-input-text ${text ? "" : "placeholder"}`}>
           {text || placeholder || (isSingle ? "Chọn ngày" : "Chọn ngày bắt đầu - kết thúc")}
         </span>
-        {clearable && !disabled && start && (
+        {clearable && !disabled && (start || nhanMoc) && (
           <button type="button" className="rcal-clear" title="Xóa" onClick={handleClear}>×</button>
         )}
       </div>
@@ -113,8 +117,8 @@ const DateField = ({
       >
         <RangeCalendar
           mode={mode}
-          initialStart={start}
-          initialEnd={end}
+          initialStart={nhanMoc ? "" : start}
+          initialEnd={nhanMoc ? "" : end}
           minDate={minDate}
           maxDate={maxDate}
           maxRangeDays={maxRangeDays}
@@ -123,6 +127,12 @@ const DateField = ({
             setOpen(false);
           }}
           onReset={() => emit({ start: "", end: "" })}
+          presets={presets}
+          activePreset={activePreset}
+          onPreset={(p) => {
+            onPreset?.(p);
+            setOpen(false);
+          }}
         />
       </Popover>
     </div>

@@ -57,6 +57,17 @@ const RowComponent = React.memo(({ row, isSelected, cellStyles, onToggle }) => (
   </TableRow>
 ));
 
+// Mốc chọn nhanh trong lịch — key khớp với switch trong activeDateRange
+const QUICK_DATE_PRESETS = [
+  { key: "all", label: "Tất cả thời gian" },
+  { key: "today", label: "Hôm nay" },
+  { key: "yesterday", label: "Hôm qua" },
+  { key: "thisWeek", label: "Tuần này" },
+  { key: "lastWeek", label: "Tuần trước" },
+  { key: "thisMonth", label: "Tháng này" },
+  { key: "lastMonth", label: "Tháng trước" },
+];
+
 export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, onAddOrders }) {
   const dispatch = useDispatch();
   const { donHangs = [], loading } = useSelector((state) => state.hoaDon) || {};
@@ -258,7 +269,7 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
                 <CalendarTodayIcon sx={{ fontSize: 18 }} />
                 {dateFilter === "custom" && fromDate && toDate
                   ? `${dayjs(fromDate).format('DD/MM/YYYY')} - ${dayjs(toDate).format('DD/MM/YYYY')}`
-                  : "Tất cả thời gian"}
+                  : QUICK_DATE_PRESETS.find((p) => p.key === dateFilter)?.label || "Tất cả thời gian"}
               </button>
               <CustomDateRangePicker
                 open={Boolean(anchorElCustomDate)}
@@ -268,8 +279,12 @@ export default function DonHangChuaXuatModal({ open, onClose, selectedClinic, on
                   start: dateFilter === "custom" ? fromDate : "",
                   end: dateFilter === "custom" ? toDate : "",
                 }}
+                presets={QUICK_DATE_PRESETS}
+                activePreset={dateFilter !== "custom" ? dateFilter : undefined}
                 onApply={(dates) => {
-                  if (dates.start) {
+                  if (dates.preset) {
+                    setDateFilter(dates.preset);
+                  } else if (dates.start) {
                     setDateFilter("custom");
                     setFromDate(dates.start);
                     setToDate(dates.end || dates.start);

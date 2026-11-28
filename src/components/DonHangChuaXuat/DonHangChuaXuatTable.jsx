@@ -333,7 +333,8 @@ export default function DonHangChuaXuatTable({ selectedClinic, selectedOrders, s
               )}
             </button>
             <CustomDateRangePicker
-              open={Boolean(anchorElCustomDate)}
+              activeLabel={dateLabel}
+                open={Boolean(anchorElCustomDate)}
               anchorEl={anchorElCustomDate}
               onClose={() => setAnchorElCustomDate(null)}
               initialDates={{ start: fromDate, end: toDate }}
